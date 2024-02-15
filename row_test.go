@@ -11,7 +11,7 @@ type RowStub struct {
 	Scanned bool
 }
 
-func (r *RowStub) Scan(_ ...interface{}) error {
+func (r *RowStub) Scan(_ ...any) error {
 	r.Scanned = true
 	return nil
 }
