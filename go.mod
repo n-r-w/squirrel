@@ -1,6 +1,6 @@
 module github.com/n-r-w/squirrel
 
-go 1.21.6
+go 1.18
 
 require (
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0
