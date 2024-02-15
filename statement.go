@@ -36,15 +36,10 @@ func (b StatementBuilderType) PlaceholderFormat(f PlaceholderFormat) StatementBu
 	return builder.Set(b, "PlaceholderFormat", f).(StatementBuilderType)
 }
 
-// RunWith sets the RunWith field for any child builders.
-func (b StatementBuilderType) RunWith(runner BaseRunner) StatementBuilderType {
-	return setRunWith(b, runner).(StatementBuilderType)
-}
-
 // Where adds WHERE expressions to the query.
 //
 // See SelectBuilder.Where for more information.
-func (b StatementBuilderType) Where(pred interface{}, args ...interface{}) StatementBuilderType {
+func (b StatementBuilderType) Where(pred any, args ...any) StatementBuilderType {
 	return builder.Append(b, "WhereParts", newWherePart(pred, args...)).(StatementBuilderType)
 }
 
@@ -89,7 +84,7 @@ func Delete(from string) DeleteBuilder {
 
 // Case returns a new CaseBuilder
 // "what" represents case value
-func Case(what ...interface{}) CaseBuilder {
+func Case(what ...any) CaseBuilder {
 	b := CaseBuilder(builder.EmptyBuilder)
 
 	switch len(what) {
@@ -98,7 +93,6 @@ func Case(what ...interface{}) CaseBuilder {
 		b = b.what(what[0])
 	default:
 		b = b.what(newPart(what[0], what[1:]...))
-
 	}
 	return b
 }

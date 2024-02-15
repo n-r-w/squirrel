@@ -4,7 +4,7 @@ package squirrel
 //
 // Scan behaves like database/sql.Row.Scan.
 type RowScanner interface {
-	Scan(...interface{}) error
+	Scan(...any) error
 }
 
 // Row wraps database/sql.Row to let squirrel return new errors on Scan.
@@ -14,7 +14,7 @@ type Row struct {
 }
 
 // Scan returns Row.err or calls RowScanner.Scan.
-func (r *Row) Scan(dest ...interface{}) error {
+func (r *Row) Scan(dest ...any) error {
 	if r.err != nil {
 		return r.err
 	}

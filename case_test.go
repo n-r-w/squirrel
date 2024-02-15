@@ -27,7 +27,7 @@ func TestCaseWithVal(t *testing.T) {
 		"FROM table"
 	assert.Equal(t, expectedSql, sql)
 
-	expectedArgs := []interface{}{"big number"}
+	expectedArgs := []any{"big number"}
 	assert.Equal(t, expectedArgs, args)
 }
 
@@ -48,7 +48,7 @@ func TestCaseWithComplexVal(t *testing.T) {
 		"FROM table"
 	assert.Equal(t, expectedSql, sql)
 
-	expectedArgs := []interface{}{10, 5}
+	expectedArgs := []any{10, 5}
 	assert.Equal(t, expectedArgs, args)
 }
 
@@ -70,7 +70,7 @@ func TestCaseWithNoVal(t *testing.T) {
 
 	assert.Equal(t, expectedSql, sql)
 
-	expectedArgs := []interface{}{0, 1, 2}
+	expectedArgs := []any{0, 1, 2}
 	assert.Equal(t, expectedArgs, args)
 }
 
@@ -92,7 +92,7 @@ func TestCaseWithExpr(t *testing.T) {
 
 	assert.Equal(t, expectedSql, sql)
 
-	expectedArgs := []interface{}{true, "it's true!"}
+	expectedArgs := []any{true, "it's true!"}
 	assert.Equal(t, expectedArgs, args)
 }
 
@@ -120,7 +120,7 @@ func TestMultipleCase(t *testing.T) {
 
 	assert.Equal(t, expectedSql, sql)
 
-	expectedArgs := []interface{}{
+	expectedArgs := []any{
 		true, "it's true!",
 		0, 1, 2,
 	}

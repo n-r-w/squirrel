@@ -5,11 +5,8 @@ package squirrel
 
 import (
 	"bytes"
-	"database/sql"
 	"fmt"
 	"strings"
-
-	"github.com/lann/builder"
 )
 
 // Sqlizer is the interface that wraps the ToSql method.
@@ -17,109 +14,13 @@ import (
 // ToSql returns a SQL representation of the Sqlizer, along with a slice of args
 // as passed to e.g. database/sql.Exec. It can also return an error.
 type Sqlizer interface {
-	ToSql() (string, []interface{}, error)
+	ToSql() (string, []any, error)
 }
 
 // rawSqlizer is expected to do what Sqlizer does, but without finalizing placeholders.
 // This is useful for nested queries.
 type rawSqlizer interface {
-	toSqlRaw() (string, []interface{}, error)
-}
-
-// Execer is the interface that wraps the Exec method.
-//
-// Exec executes the given query as implemented by database/sql.Exec.
-type Execer interface {
-	Exec(query string, args ...interface{}) (sql.Result, error)
-}
-
-// Queryer is the interface that wraps the Query method.
-//
-// Query executes the given query as implemented by database/sql.Query.
-type Queryer interface {
-	Query(query string, args ...interface{}) (*sql.Rows, error)
-}
-
-// QueryRower is the interface that wraps the QueryRow method.
-//
-// QueryRow executes the given query as implemented by database/sql.QueryRow.
-type QueryRower interface {
-	QueryRow(query string, args ...interface{}) RowScanner
-}
-
-// BaseRunner groups the Execer and Queryer interfaces.
-type BaseRunner interface {
-	Execer
-	Queryer
-}
-
-// Runner groups the Execer, Queryer, and QueryRower interfaces.
-type Runner interface {
-	Execer
-	Queryer
-	QueryRower
-}
-
-// WrapStdSql wraps a type implementing the standard SQL interface with methods that
-// squirrel expects.
-func WrapStdSql(stdSql StdSql) Runner {
-	return &stdsqlRunner{stdSql}
-}
-
-// StdSql encompasses the standard methods of the *sql.DB type, and other types that
-// wrap these methods.
-type StdSql interface {
-	Query(string, ...interface{}) (*sql.Rows, error)
-	QueryRow(string, ...interface{}) *sql.Row
-	Exec(string, ...interface{}) (sql.Result, error)
-}
-
-type stdsqlRunner struct {
-	StdSql
-}
-
-func (r *stdsqlRunner) QueryRow(query string, args ...interface{}) RowScanner {
-	return r.StdSql.QueryRow(query, args...)
-}
-
-func setRunWith(b interface{}, runner BaseRunner) interface{} {
-	switch r := runner.(type) {
-	case StdSqlCtx:
-		runner = WrapStdSqlCtx(r)
-	case StdSql:
-		runner = WrapStdSql(r)
-	}
-	return builder.Set(b, "RunWith", runner)
-}
-
-// RunnerNotSet is returned by methods that need a Runner if it isn't set.
-var RunnerNotSet = fmt.Errorf("cannot run; no Runner set (RunWith)")
-
-// RunnerNotQueryRunner is returned by QueryRow if the RunWith value doesn't implement QueryRower.
-var RunnerNotQueryRunner = fmt.Errorf("cannot QueryRow; Runner is not a QueryRower")
-
-// ExecWith Execs the SQL returned by s with db.
-func ExecWith(db Execer, s Sqlizer) (res sql.Result, err error) {
-	query, args, err := s.ToSql()
-	if err != nil {
-		return
-	}
-	return db.Exec(query, args...)
-}
-
-// QueryWith Querys the SQL returned by s with db.
-func QueryWith(db Queryer, s Sqlizer) (rows *sql.Rows, err error) {
-	query, args, err := s.ToSql()
-	if err != nil {
-		return
-	}
-	return db.Query(query, args...)
-}
-
-// QueryRowWith QueryRows the SQL returned by s with db.
-func QueryRowWith(db QueryRower, s Sqlizer) RowScanner {
-	query, args, err := s.ToSql()
-	return &Row{RowScanner: db.QueryRow(query, args...), err: err}
+	toSqlRaw() (string, []any, error)
 }
 
 // DebugSqlizer calls ToSql on s and shows the approximate SQL to be executed
