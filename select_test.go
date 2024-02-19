@@ -245,14 +245,14 @@ func TestSelectSubqueryInConjunctionPlaceholderNumbering(t *testing.T) {
 func TestSelectSubqueryInSelect(t *testing.T) {
 	sqlCheckSubQ := Select("gt.entity_task_id ").
 		From("scanner_tasks st ").
-		Join("global_tasks gt").JoinClause("ON gt.id = st.global_task_id").
+		Join("global_tasks gt ON gt.id = st.global_task_id").
 		Where(Eq{"st.id": 1}).
 		PlaceholderFormat(Dollar)
 
 	sqlCheck := Select("st.id").
 		From("scanner_tasks st").
-		Join("global_tasks gt").JoinClause("ON gt.id = st.global_task_id").
-		Join("entity_tasks et").JoinClause("ON et.id = gt.entity_task_id").
+		Join("global_tasks gt ON gt.id = st.global_task_id").
+		Join("entity_tasks et ON et.id = gt.entity_task_id").
 		Where(
 			And{
 				Eq{"st.status": []int{2, 3, 4}},
