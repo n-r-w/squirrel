@@ -1,3 +1,9 @@
+[![Go Reference](https://pkg.go.dev/badge/github.com/n-r-w/squirrel.svg)](https://pkg.go.dev/github.com/n-r-w/squirrel)
+[![Go Coverage](https://github.com/n-r-w/squirrel/wiki/coverage.svg)](https://raw.githack.com/wiki/n-r-w/squirrel/coverage.html)
+![CI Status](https://github.com/n-r-w/squirrel/actions/workflows/go.yml/badge.svg)
+[![Stability](http://badges.github.io/stability-badges/dist/stable.svg)](http://github.com/badges/stability-badges)
+[![Go Report](https://goreportcard.com/badge/github.com/n-r-w/squirrel)](https://goreportcard.com/badge/github.com/n-r-w/squirrel)
+
 # Fork of github.com/Masterminds/squirrel
 
 Changes:
