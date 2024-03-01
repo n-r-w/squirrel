@@ -8,7 +8,7 @@
 
 Breaking changes:
 
-- Removed all database interaction methods. Only query building functions are left. Squirrel is now a pure SQL query builder. For database interaction, use:
+Removed all database interaction methods. Only query building functions are left. Squirrel is now a pure SQL query builder. For database interaction, use:
 
 - Sqlizer.ToSql() to get the SQL query and arguments.
 - `database/sql`, <https://github.com/jackc/pgx>, etc. for executing queries.
