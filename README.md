@@ -22,13 +22,13 @@ Changes in the `Case` method:
 Before:
 
 ```go
-sq.Case("id").When(1, "2").When(2, "'text'").Else("4")`)
+sq.Case("id").When(1, "2").When(2, "'text'").Else("4")
 ```
 
 After:
 
 ```go
-sq.Case("id").When(1, 2).When(2, "text").Else(4)`)
+sq.Case("id").When(1, 2).When(2, "text").Else(4)
 ```
 
 ## New features
