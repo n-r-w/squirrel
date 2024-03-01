@@ -35,6 +35,9 @@ func (e expr) ToSql() (sql string, args []any, err error) {
 		if _, ok := arg.(Sqlizer); ok {
 			simple = false
 		}
+		if isListType(arg) {
+			simple = false
+		}
 	}
 	if simple {
 		return e.sql, e.args, nil
@@ -439,4 +442,180 @@ func isListType(val any) bool {
 	}
 	valVal := reflect.ValueOf(val)
 	return valVal.Kind() == reflect.Array || valVal.Kind() == reflect.Slice
+}
+
+// sumExpr helps to use aggregate function SUM in SQL query
+type sumExpr struct {
+	expr Sqlizer
+}
+
+// Sum allows to use SUM function in SQL query
+// Ex: SelectBuilder.Select("id", Sum("amount"))
+func Sum(e Sqlizer) sumExpr {
+	return sumExpr{e}
+}
+
+func (e sumExpr) ToSql() (sql string, args []any, err error) {
+	sql, args, err = e.expr.ToSql()
+	if err == nil {
+		sql = fmt.Sprintf("SUM(%s)", sql)
+	}
+	return
+}
+
+// countExpr helps to use aggregate function COUNT in SQL query
+type countExpr struct {
+	expr Sqlizer
+}
+
+// Count allows to use COUNT function in SQL query
+// Ex: SelectBuilder.Select("id", Count("amount"))
+func Count(e Sqlizer) countExpr {
+	return countExpr{e}
+}
+
+func (e countExpr) ToSql() (sql string, args []any, err error) {
+	sql, args, err = e.expr.ToSql()
+	if err == nil {
+		sql = fmt.Sprintf("COUNT(%s)", sql)
+	}
+	return
+}
+
+// minExpr helps to use aggregate function MIN in SQL query
+type minExpr struct {
+	expr Sqlizer
+}
+
+// Min allows to use MIN function in SQL query
+// Ex: SelectBuilder.Select("id", Min("amount"))
+func Min(e Sqlizer) minExpr {
+	return minExpr{e}
+}
+
+func (e minExpr) ToSql() (sql string, args []any, err error) {
+	sql, args, err = e.expr.ToSql()
+	if err == nil {
+		sql = fmt.Sprintf("MIN(%s)", sql)
+	}
+	return
+}
+
+// maxExpr helps to use aggregate function MAX in SQL query
+type maxExpr struct {
+	expr Sqlizer
+}
+
+// Max allows to use MAX function in SQL query
+// Ex: SelectBuilder.Select("id", Max("amount"))
+func Max(e Sqlizer) maxExpr {
+	return maxExpr{e}
+}
+
+func (e maxExpr) ToSql() (sql string, args []any, err error) {
+	sql, args, err = e.expr.ToSql()
+	if err == nil {
+		sql = fmt.Sprintf("MAX(%s)", sql)
+	}
+	return
+}
+
+// avgExpr helps to use aggregate function AVG in SQL query
+type avgExpr struct {
+	expr Sqlizer
+}
+
+// Avg allows to use AVG function in SQL query
+// Ex: SelectBuilder.Select("id", Avg("amount"))
+func Avg(e Sqlizer) avgExpr {
+	return avgExpr{e}
+}
+
+func (e avgExpr) ToSql() (sql string, args []any, err error) {
+	sql, args, err = e.expr.ToSql()
+	if err == nil {
+		sql = fmt.Sprintf("AVG(%s)", sql)
+	}
+	return
+}
+
+// ExistsExpr helps to use EXISTS in SQL query
+type existsExpr struct {
+	expr Sqlizer
+}
+
+// Exists allows to use EXISTS in SQL query
+// Ex: SelectBuilder.Where(Exists(Select("id").From("accounts").Where(Eq{"id": 1})))
+func Exists(e Sqlizer) existsExpr {
+	return existsExpr{e}
+}
+
+func (e existsExpr) ToSql() (sql string, args []any, err error) {
+	sql, args, err = e.expr.ToSql()
+	if err == nil {
+		sql = fmt.Sprintf("EXISTS (%s)", sql)
+	}
+	return
+}
+
+// NotExistsExpr helps to use NOT EXISTS in SQL query
+type notExistsExpr struct {
+	expr Sqlizer
+}
+
+// NotExists allows to use NOT EXISTS in SQL query
+// Ex: SelectBuilder.Where(NotExists(Select("id").From("accounts").Where(Eq{"id": 1})))
+func NotExists(e Sqlizer) notExistsExpr {
+	return notExistsExpr{e}
+}
+
+func (e notExistsExpr) ToSql() (sql string, args []any, err error) {
+	sql, args, err = e.expr.ToSql()
+	if err == nil {
+		sql = fmt.Sprintf("NOT EXISTS (%s)", sql)
+	}
+	return
+}
+
+// InExpr helps to use IN in SQL query
+type inExpr struct {
+	expr any
+}
+
+// In allows to use IN in SQL query
+// Ex: SelectBuilder.Where(In("id", 1, 2, 3))
+func In(e any) inExpr {
+	return inExpr{e}
+}
+
+func (e inExpr) ToSql() (sql string, args []any, err error) {
+	switch v := e.expr.(type) {
+	case Sqlizer:
+		sql, args, err = v.ToSql()
+		if err == nil {
+			sql = fmt.Sprintf("IN (%s)", sql)
+		}
+	default:
+		args = []any{v}
+		sql = fmt.Sprintf("IN (%s)", Placeholders(len(args)))
+	}
+
+	return
+}
+
+// NotInExpr helps to use NOT IN in SQL query
+type notInExpr inExpr
+
+// NotIn allows to use NOT IN in SQL query
+// Ex: SelectBuilder.Where(NotIn("id", 1, 2, 3))
+func NotIn(e Sqlizer) notInExpr {
+	return notInExpr{e}
+}
+
+func (e notInExpr) ToSql() (sql string, args []any, err error) {
+	sql, args, err = inExpr(e).ToSql()
+	if err == nil {
+		sql = fmt.Sprintf("NOT %s", sql)
+	}
+	return
 }

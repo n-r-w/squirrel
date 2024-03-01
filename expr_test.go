@@ -456,6 +456,84 @@ func TestExprRecursion(t *testing.T) {
 	}
 }
 
+func TestAggr(t *testing.T) {
+	subQuery := Select("id").From("users").Where(Eq{"company": 20})
+
+	expectedSql := "SELECT id FROM users WHERE company = ?"
+	expectedArgs := []any{20}
+
+	// SUM
+	sql, args, err := Sum(subQuery).ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SUM("+expectedSql+")", sql)
+	assert.Equal(t, expectedArgs, args)
+
+	// AVG
+	sql, args, err = Avg(subQuery).ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "AVG("+expectedSql+")", sql)
+	assert.Equal(t, expectedArgs, args)
+
+	// MAX
+	sql, args, err = Max(subQuery).ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "MAX("+expectedSql+")", sql)
+	assert.Equal(t, expectedArgs, args)
+
+	// MIN
+	sql, args, err = Min(subQuery).ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "MIN("+expectedSql+")", sql)
+	assert.Equal(t, expectedArgs, args)
+
+	// COUNT
+	sql, args, err = Count(subQuery).ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "COUNT("+expectedSql+")", sql)
+	assert.Equal(t, expectedArgs, args)
+
+	// EXISTS
+	sql, args, err = Exists(subQuery).ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "EXISTS ("+expectedSql+")", sql)
+	assert.Equal(t, expectedArgs, args)
+
+	// NOT EXISTS
+	sql, args, err = NotExists(subQuery).ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "NOT EXISTS ("+expectedSql+")", sql)
+	assert.Equal(t, expectedArgs, args)
+}
+
+func TestIn(t *testing.T) {
+	subQuery := Select("id").From("users").Where(Eq{"company": 20})
+
+	expectedSql := "SELECT id FROM users WHERE company = ?"
+	expectedArgs := []any{20}
+
+	// IN
+	sql, args, err := In(subQuery).ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "IN ("+expectedSql+")", sql)
+	assert.Equal(t, expectedArgs, args)
+
+	sql, args, err = In([]int{1, 2, 3}).ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "IN (?)", sql)
+	assert.Equal(t, []any{[]int{1, 2, 3}}, args)
+
+	sql, args, err = In(1).ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "IN (?)", sql)
+	assert.Equal(t, []any{1}, args)
+
+	// NOT IN
+	sql, args, err = NotIn(subQuery).ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "NOT IN ("+expectedSql+")", sql)
+	assert.Equal(t, expectedArgs, args)
+}
+
 func ExampleEq() {
 	Select("id", "created", "first_name").From("users").Where(Eq{
 		"company": 20,

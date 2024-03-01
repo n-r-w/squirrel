@@ -74,10 +74,15 @@ func TestCaseWithNoVal(t *testing.T) {
 	assert.Equal(t, expectedArgs, args)
 }
 
+type SomeTestType int
+
+const someTestConst SomeTestType = 42
+
 func TestCaseWithExpr(t *testing.T) {
 	caseStmt := Case(Expr("x = ?", true)).
 		When("true", Expr("?", "it's true!")).
-		Else("42")
+		When("false", 42).
+		Else(someTestConst)
 
 	qb := Select().Column(caseStmt).From("table")
 	sql, args, err := qb.ToSql()
@@ -86,6 +91,7 @@ func TestCaseWithExpr(t *testing.T) {
 
 	expectedSql := "SELECT CASE x = ? " +
 		"WHEN true THEN ? " +
+		"WHEN false THEN 42 " +
 		"ELSE 42 " +
 		"END " +
 		"FROM table"
