@@ -12,7 +12,7 @@ func TestUpdateBuilderToSql(t *testing.T) {
 		Table("a").
 		Set("b", Expr("? + 1", 1)).
 		SetMap(Eq{"c": 2}).
-		Set("c1", Case("status").When("1", "2").When("2", "1")).
+		Set("c1", Case("status").When("1", 2).When("2", 1)).
 		Set("c2", Case().When("a = 2", Expr("?", "foo")).When("a = 3", Expr("?", "bar"))).
 		Set("c3", Select("a").From("b")).
 		Where("d = ?", 3).
