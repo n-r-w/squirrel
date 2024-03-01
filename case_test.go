@@ -20,8 +20,8 @@ func TestCaseWithVal(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedSql := "SELECT CASE number " +
-		"WHEN 1 THEN one " +
-		"WHEN 2 THEN two " +
+		"WHEN 1 THEN 'one' " +
+		"WHEN 2 THEN 'two' " +
 		"ELSE ? " +
 		"END " +
 		"FROM table"
@@ -33,7 +33,7 @@ func TestCaseWithVal(t *testing.T) {
 
 func TestCaseWithComplexVal(t *testing.T) {
 	caseStmt := Case("? > ?", 10, 5).
-		When("true", "'T'")
+		When("true", "T")
 
 	qb := Select().
 		Column(Alias(caseStmt, "complexCase")).
@@ -54,7 +54,7 @@ func TestCaseWithComplexVal(t *testing.T) {
 
 func TestCaseWithNoVal(t *testing.T) {
 	caseStmt := Case().
-		When(Eq{"x": 0}, "x is zero").
+		When(Eq{"x": 0}, Expr("x is zero")).
 		When(Expr("x > ?", 1), Expr("CONCAT('x is greater than ', ?)", 2))
 
 	qb := Select().Column(caseStmt).From("table")
@@ -74,15 +74,14 @@ func TestCaseWithNoVal(t *testing.T) {
 	assert.Equal(t, expectedArgs, args)
 }
 
-type SomeTestType int
-
-const someTestConst SomeTestType = 42
-
 func TestCaseWithExpr(t *testing.T) {
 	caseStmt := Case(Expr("x = ?", true)).
-		When("true", Expr("?", "it's true!")).
-		When("false", 42).
-		Else(someTestConst)
+		When("1 > 0", Expr("?", "it's true!")).
+		When("1 > 0", "test").
+		When("1 > 0", 42).
+		When("1 > 0", 42.1).
+		When("1 > 0", true).
+		Else(42)
 
 	qb := Select().Column(caseStmt).From("table")
 	sql, args, err := qb.ToSql()
@@ -90,8 +89,11 @@ func TestCaseWithExpr(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedSql := "SELECT CASE x = ? " +
-		"WHEN true THEN ? " +
-		"WHEN false THEN 42 " +
+		"WHEN 1 > 0 THEN ? " +
+		"WHEN 1 > 0 THEN 'test' " +
+		"WHEN 1 > 0 THEN 42 " +
+		"WHEN 1 > 0 THEN 42.100000 " +
+		"WHEN 1 > 0 THEN true " +
 		"ELSE 42 " +
 		"END " +
 		"FROM table"
@@ -105,9 +107,9 @@ func TestCaseWithExpr(t *testing.T) {
 func TestMultipleCase(t *testing.T) {
 	caseStmtNoval := Case(Expr("x = ?", true)).
 		When("true", Expr("?", "it's true!")).
-		Else("42")
+		Else(42)
 	caseStmtExpr := Case().
-		When(Eq{"x": 0}, "'x is zero'").
+		When(Eq{"x": 0}, "x is zero").
 		When(Expr("x > ?", 1), Expr("CONCAT('x is greater than ', ?)", 2))
 
 	qb := Select().

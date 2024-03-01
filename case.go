@@ -3,6 +3,7 @@ package squirrel
 import (
 	"bytes"
 	"errors"
+	"reflect"
 
 	"github.com/lann/builder"
 )
@@ -119,10 +120,45 @@ func (b CaseBuilder) what(e any) CaseBuilder {
 func (b CaseBuilder) When(when any, then any) CaseBuilder {
 	// TODO: performance hint: replace slice of WhenPart with just slice of parts
 	// where even indices of the slice belong to "when"s and odd indices belong to "then"s
+
+	switch t := then.(type) {
+	case nil, Sqlizer:
+		// no-op
+	default:
+		v := reflect.ValueOf(t)
+		switch v.Kind() { // nolint:exhaustive
+		case reflect.String:
+			then = "'" + v.String() + "'"
+		case reflect.Bool:
+			if v.Bool() {
+				then = "true"
+			} else {
+				then = "false"
+			}
+		}
+	}
+
 	return builder.Append(b, "WhenParts", newWhenPart(when, then)).(CaseBuilder)
 }
 
 // Else What sets optional "ELSE ..." part for CASE construct
 func (b CaseBuilder) Else(e any) CaseBuilder {
+	switch t := e.(type) {
+	case nil, Sqlizer:
+		// no-op
+	default:
+		v := reflect.ValueOf(t)
+		switch v.Kind() { // nolint:exhaustive
+		case reflect.String:
+			e = "'" + v.String() + "'"
+		case reflect.Bool:
+			if v.Bool() {
+				e = "true"
+			} else {
+				e = "false"
+			}
+		}
+	}
+
 	return builder.Set(b, "Else", newPart(e)).(CaseBuilder)
 }

@@ -579,13 +579,14 @@ func (e notExistsExpr) ToSql() (sql string, args []any, err error) {
 
 // InExpr helps to use IN in SQL query
 type inExpr struct {
-	expr any
+	column string
+	expr   any
 }
 
 // In allows to use IN in SQL query
 // Ex: SelectBuilder.Where(In("id", 1, 2, 3))
-func In(e any) inExpr {
-	return inExpr{e}
+func In(column string, e any) inExpr {
+	return inExpr{column, e}
 }
 
 func (e inExpr) ToSql() (sql string, args []any, err error) {
@@ -593,14 +594,14 @@ func (e inExpr) ToSql() (sql string, args []any, err error) {
 	case Sqlizer:
 		sql, args, err = v.ToSql()
 		if err == nil {
-			sql = fmt.Sprintf("IN (%s)", sql)
+			sql = fmt.Sprintf("%s IN (%s)", e.column, sql)
 		}
 	default:
 		args = []any{v}
-		sql = fmt.Sprintf("IN (%s)", Placeholders(len(args)))
+		sql = fmt.Sprintf("%s=ANY(%s)", e.column, Placeholders(len(args)))
 	}
 
-	return
+	return sql, args, err
 }
 
 // NotInExpr helps to use NOT IN in SQL query
@@ -608,14 +609,21 @@ type notInExpr inExpr
 
 // NotIn allows to use NOT IN in SQL query
 // Ex: SelectBuilder.Where(NotIn("id", 1, 2, 3))
-func NotIn(e Sqlizer) notInExpr {
-	return notInExpr{e}
+func NotIn(column string, e any) notInExpr {
+	return notInExpr{column, e}
 }
 
 func (e notInExpr) ToSql() (sql string, args []any, err error) {
-	sql, args, err = inExpr(e).ToSql()
-	if err == nil {
-		sql = fmt.Sprintf("NOT %s", sql)
+	switch v := e.expr.(type) {
+	case Sqlizer:
+		sql, args, err = v.ToSql()
+		if err == nil {
+			sql = fmt.Sprintf("%s NOT IN (%s)", e.column, sql)
+		}
+	default:
+		args = []any{v}
+		sql = fmt.Sprintf("%s<>ALL(%s)", e.column, Placeholders(len(args)))
 	}
-	return
+
+	return sql, args, err
 }

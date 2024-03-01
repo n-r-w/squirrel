@@ -512,26 +512,46 @@ func TestIn(t *testing.T) {
 	expectedArgs := []any{20}
 
 	// IN
-	sql, args, err := In(subQuery).ToSql()
+	sql, args, err := In("id", subQuery).ToSql()
 	assert.NoError(t, err)
-	assert.Equal(t, "IN ("+expectedSql+")", sql)
+	assert.Equal(t, "id IN ("+expectedSql+")", sql)
 	assert.Equal(t, expectedArgs, args)
 
-	sql, args, err = In([]int{1, 2, 3}).ToSql()
+	sql, args, err = In("id", []int{1, 2, 3}).ToSql()
 	assert.NoError(t, err)
-	assert.Equal(t, "IN (?)", sql)
+	assert.Equal(t, "id=ANY(?)", sql)
 	assert.Equal(t, []any{[]int{1, 2, 3}}, args)
 
-	sql, args, err = In(1).ToSql()
+	sql, args, err = In("id", []float64{1, 2, 3}).ToSql()
 	assert.NoError(t, err)
-	assert.Equal(t, "IN (?)", sql)
+	assert.Equal(t, "id=ANY(?)", sql)
+	assert.Equal(t, []any{[]float64{1, 2, 3}}, args)
+
+	sql, args, err = In("id", []string{"1", "2", "3"}).ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "id=ANY(?)", sql)
+	assert.Equal(t, []any{[]string{"1", "2", "3"}}, args)
+
+	sql, args, err = In("id", []bool{true, false}).ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "id=ANY(?)", sql)
+	assert.Equal(t, []any{[]bool{true, false}}, args)
+
+	sql, args, err = In("id", 1).ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "id=ANY(?)", sql)
 	assert.Equal(t, []any{1}, args)
 
 	// NOT IN
-	sql, args, err = NotIn(subQuery).ToSql()
+	sql, args, err = NotIn("id", subQuery).ToSql()
 	assert.NoError(t, err)
-	assert.Equal(t, "NOT IN ("+expectedSql+")", sql)
+	assert.Equal(t, "id NOT IN ("+expectedSql+")", sql)
 	assert.Equal(t, expectedArgs, args)
+
+	sql, args, err = NotIn("id", []int{1, 2, 3}).ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "id<>ALL(?)", sql)
+	assert.Equal(t, []any{[]int{1, 2, 3}}, args)
 }
 
 func ExampleEq() {

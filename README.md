@@ -4,9 +4,9 @@
 [![Stability](http://badges.github.io/stability-badges/dist/stable.svg)](http://github.com/badges/stability-badges)
 [![Go Report](https://goreportcard.com/badge/github.com/n-r-w/squirrel)](https://goreportcard.com/badge/github.com/n-r-w/squirrel)
 
-# Fork of [github.com/Masterminds/squirrel](https://github.com/Masterminds/squirrel), which unfortunately has not been updated by the author for a long time.
+# Fork of [github.com/Masterminds/squirrel](https://github.com/Masterminds/squirrel), which unfortunately has not been updated by the author for a long time
 
-Breaking changes:
+## Breaking changes
 
 Removed all database interaction methods. Only query building functions are left. Squirrel is now a pure SQL query builder. For database interaction, use:
 
@@ -14,15 +14,32 @@ Removed all database interaction methods. Only query building functions are left
 - `database/sql`, <https://github.com/jackc/pgx>, etc. for executing queries.
 - <https://github.com/georgysavva/scany> for scanning rows into structs.
 
-New features:
+Changes in the `Case` method:
+
+- To pass an integer value to the `When` and `Else` methods, you need to pass it as an int, not as a string.
+- To pass a string value to the `When` and `Else` methods, you don't need to add quotes.
+
+Before:
+
+```go
+sq.Case("id").When(1, "2").When(2, "'text'").Else("4")`)
+```
+
+After:
+
+```go
+sq.Case("id").When(1, 2).When(2, "text").Else(4)`)
+```
+
+## New features
 
 - Add subquery support for `WHERE` clause (e.g. `sq.Eq{"id": sq.Select("id").From("other_table")}`).
 - Add support for integer values in `CASE THEN/ELSE` clause (e.g. `sq.Case("id").When(1, 2).When(2, 3).Else(4)`).
 - Add support for aggregate functions `SUM`, `COUNT`, `AVG`, `MIN`, `MAX` (e.g. `sq.Sum(subQuery)`).
 - Add support for using slice as argument for `Column` function (e.g. `Column(sq.Expr("id = ANY(?)", []int{1,2,3}))`).
-- Add support for `IN` and `NOT IN` clause (e.g. `In([]int{1, 2, 3})`, `NotIn(subQuery)`).
+- Add support for `IN` and `NOT IN` clause (e.g. `In("id", []int{1, 2, 3})`, `NotIn("id", subQuery)`).
 
-Miscellaneous:
+## Miscellaneous
 
 - Added a linter and fixed all warnings.
 
