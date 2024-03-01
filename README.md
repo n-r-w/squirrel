@@ -6,11 +6,25 @@
 
 # Fork of github.com/Masterminds/squirrel
 
-Changes:
+Breaking changes:
+
+- Removed all database interaction methods. Only query building functions are left. Squirrel is now a pure SQL query builder. For database interaction, use:
+
+- Sqlizer.ToSql() to get the SQL query and arguments.
+- `database/sql`, <https://github.com/jackc/pgx>, etc. for executing queries.
+- <https://github.com/georgysavva/scany> for scanning rows into structs.
+
+New features:
+
+- Add subquery support for `WHERE` clause (e.g. `sq.Eq{"id": sq.Select("id").From("other_table")}`).
+- Add support for integer values in `CASE THEN/ELSE` clause (e.g. `sq.Case("id").When(1, 2).When(2, 3).Else(4)`).
+- Add support for aggregate functions `SUM`, `COUNT`, `AVG`, `MIN`, `MAX` (e.g. `sq.Sum(subQuery)`).
+- Add support for using slice as argument for `Column` function (e.g. `Column(sq.Expr("id = ANY(?)", []int{1,2,3}))`).
+- Add support for `IN` and `NOT IN` clause (e.g. `In([]int{1, 2, 3})`, `NotIn(subQuery)`).
+
+Miscellaneous:
 
 - Added a linter and fixed all warnings.
-- Removed all database interaction methods. Only query building functions are left.
-- Add subquery support for WHERE clause (e.g. `sq.Eq{"id": sq.Select("id").From("other_table")}`).
 
 # Squirrel - fluent SQL generator for Go
 
