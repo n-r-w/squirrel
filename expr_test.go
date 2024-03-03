@@ -554,6 +554,42 @@ func TestIn(t *testing.T) {
 	assert.Equal(t, []any{[]int{1, 2, 3}}, args)
 }
 
+func Test_Range(t *testing.T) {
+	sql, args, err := Range("id", 1, 10).ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "id BETWEEN ? AND ?", sql)
+	assert.Equal(t, []any{1, 10}, args)
+
+	sql, args, err = Range("id", 1, nil).ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "id >= ?", sql)
+	assert.Equal(t, []any{1}, args)
+
+	sql, args, err = Range("id", nil, 10).ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "id <= ?", sql)
+	assert.Equal(t, []any{10}, args)
+
+	sql, args, err = Range("id", nil, nil).ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "", sql)
+	assert.Empty(t, args)
+}
+
+func Test_EqNotEmpty(t *testing.T) {
+	sql, args, err := EqNotEmpty{
+		"col1": 1,
+		"col2": 0,
+		"col3": "",
+		"col4": nil,
+		"col5": []int{2, 0, 3},
+		"col6": []any{0, 0},
+	}.ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "col1 = ? AND col5 IN (?,?)", sql)
+	assert.Equal(t, []any{1, 2, 3}, args)
+}
+
 func ExampleEq() {
 	Select("id", "created", "first_name").From("users").Where(Eq{
 		"company": 20,
