@@ -627,3 +627,89 @@ func (e notInExpr) ToSql() (sql string, args []any, err error) {
 
 	return sql, args, err
 }
+
+// rangeExpr helps to use BETWEEN in SQL query
+type rangeExpr struct {
+	column string
+	start  any
+	end    any
+}
+
+// Range allows to use range in SQL query
+// Ex: SelectBuilder.Where(Range("id", 1, 3)) -> "id BETWEEN 1 AND 3"
+// If start or end is nil, it will be omitted from the query.
+// Ex: SelectBuilder.Where(Range("id", 1, nil)) -> "id >= 1"
+// Ex: SelectBuilder.Where(Range("id", nil, 3)) -> "id <= 3"
+func Range(column string, start, end any) rangeExpr {
+	return rangeExpr{column, start, end}
+}
+
+// ToSql builds the query into a SQL string and bound args.
+func (e rangeExpr) ToSql() (sql string, args []any, err error) {
+	hasStart := e.start != nil && !reflect.ValueOf(e.start).IsZero()
+	hasEnd := e.end != nil && !reflect.ValueOf(e.end).IsZero()
+
+	if !hasStart && !hasEnd {
+		return "", nil, nil
+	}
+
+	var s Sqlizer
+	if hasStart && hasEnd {
+		s = Expr(fmt.Sprintf("%s BETWEEN ? AND ?", e.column), e.start, e.end)
+	} else if hasStart {
+		s = GtOrEq{e.column: e.start}
+	} else {
+		s = LtOrEq{e.column: e.end}
+	}
+
+	return s.ToSql()
+}
+
+// EqNotEmpty ignores empty and zero values in Eq map.
+// Ex: EqNotEmpty{"id1": 1, "name": nil, id2: 0, "desc": ""} -> "id1 = 1".
+type EqNotEmpty map[string]any
+
+// ToSql builds the query into a SQL string and bound args.
+func (eq EqNotEmpty) ToSql() (sql string, args []any, err error) {
+	vals := make(Eq, len(eq))
+	for k, v := range eq {
+		v = clearEmptyValue(v)
+		if v != nil {
+			vals[k] = v
+		}
+	}
+
+	return vals.ToSql()
+}
+
+// clearEmptyValue recursively clears empty and zero values in any type.
+func clearEmptyValue(v any) any {
+	if v == nil {
+		return nil
+	}
+
+	t := reflect.ValueOf(v)
+	switch t.Kind() { //nolint:exhaustive
+	case reflect.Array, reflect.Slice:
+		if t.Len() != 0 {
+			newSlice := reflect.MakeSlice(t.Type(), 0, t.Len())
+			for i := 0; i < t.Len(); i++ {
+				itemVal := clearEmptyValue(t.Index(i).Interface())
+				if itemVal != nil {
+					newSlice = reflect.Append(newSlice, t.Index(i))
+				}
+			}
+
+			if newSlice.Len() != 0 {
+				return newSlice.Interface()
+			}
+		}
+
+	default:
+		if !t.IsZero() {
+			return v
+		}
+	}
+
+	return nil
+}
