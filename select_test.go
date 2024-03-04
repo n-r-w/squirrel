@@ -488,4 +488,12 @@ func TestPaginate(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "SELECT id, name FROM users ORDER BY id ASC LIMIT 10 OFFSET 10", sql)
 	assert.Empty(t, args)
+
+	_, _, err = Select("id", "name").
+		From("users").
+		Paginate(PaginatorByPage(10, 2)).
+		SetIDColumn("id").
+		OrderBy("id ASC").
+		ToSql()
+	assert.ErrorContains(t, err, "IDColumn can be used only in combination with PaginatorByID function")
 }
