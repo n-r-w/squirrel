@@ -3,8 +3,9 @@ package squirrel
 import (
 	"bytes"
 	"fmt"
-	"golang.org/x/exp/slices"
 	"strings"
+
+	"golang.org/x/exp/slices"
 
 	"github.com/lann/builder"
 )
@@ -20,35 +21,34 @@ const (
 type paginatorType int
 
 const (
-	paginatorByPage paginatorType = iota
+	paginatorUndefined paginatorType = iota
+	paginatorByPage
 	paginatorByID
 )
 
 // Paginator is a helper object to paginate results.
 type Paginator struct {
-	limit    uint64
-	page     uint64
-	lastID   int64
-	columnID string
-	pType    paginatorType
+	limit  uint64
+	page   uint64
+	lastID int64
+	pType  paginatorType
 }
 
-// NewPaginatorByPage creates a new Paginator for pagination by page.
-func NewPaginatorByPage(limit, page uint64) *Paginator {
-	return &Paginator{
+// PaginatorByPage creates a new Paginator for pagination by page.
+func PaginatorByPage(limit, page uint64) Paginator {
+	return Paginator{
 		limit: limit,
 		page:  page,
 		pType: paginatorByPage,
 	}
 }
 
-// NewPaginatorByID creates a new Paginator for pagination by ID.
-func NewPaginatorByID(limit uint64, lastID int64, columnID string) *Paginator {
-	return &Paginator{
-		limit:    limit,
-		lastID:   lastID,
-		columnID: columnID,
-		pType:    paginatorByID,
+// PaginatorByID creates a new Paginator for pagination by ID.
+func PaginatorByID(limit uint64, lastID int64) Paginator {
+	return Paginator{
+		limit:  limit,
+		lastID: lastID,
+		pType:  paginatorByID,
 	}
 }
 
@@ -80,6 +80,8 @@ type selectData struct {
 	Limit             string
 	Offset            string
 	Suffixes          []Sqlizer
+	Paginator         Paginator
+	IDColumn          string // ID column name. Required for pagination by ID.
 }
 
 func (d *selectData) ToSql() (sqlStr string, args []any, err error) {
@@ -139,9 +141,20 @@ func (d *selectData) toSqlRaw() (sqlStr string, args []any, err error) {
 		}
 	}
 
-	if len(d.WhereParts) > 0 {
+	whereParts := make([]Sqlizer, len(d.WhereParts))
+	copy(whereParts, d.WhereParts)
+
+	if d.Paginator.pType == paginatorByID {
+		if d.IDColumn == "" {
+			return "", nil, fmt.Errorf("IDColumn is required for pagination by ID")
+		}
+
+		whereParts = append(whereParts, Gt{d.IDColumn: d.Paginator.lastID})
+	}
+
+	if len(whereParts) > 0 {
 		_, _ = sql.WriteString(" WHERE ")
-		args, err = appendToSql(d.WhereParts, sql, " AND ", args)
+		args, err = appendToSql(whereParts, sql, " AND ", args)
 		if err != nil {
 			return "", nil, err
 		}
@@ -169,13 +182,30 @@ func (d *selectData) toSqlRaw() (sqlStr string, args []any, err error) {
 	}
 
 	if len(d.Limit) > 0 {
+		if d.Paginator.pType != paginatorUndefined {
+			return "", nil, fmt.Errorf("limit and paginator cannot be used together")
+		}
+
 		_, _ = sql.WriteString(" LIMIT ")
 		_, _ = sql.WriteString(d.Limit)
 	}
 
 	if len(d.Offset) > 0 {
+		if d.Paginator.pType != paginatorUndefined {
+			return "", nil, fmt.Errorf("offset and paginator cannot be used together")
+		}
+
 		_, _ = sql.WriteString(" OFFSET ")
 		_, _ = sql.WriteString(d.Offset)
+	}
+
+	if d.Paginator.pType == paginatorByPage {
+		_, _ = sql.WriteString(fmt.Sprintf(" LIMIT %d", d.Paginator.limit))
+		if d.Paginator.page > 1 {
+			_, _ = sql.WriteString(fmt.Sprintf(" OFFSET %d", d.Paginator.limit*(d.Paginator.page-1)))
+		}
+	} else if d.Paginator.pType == paginatorByID {
+		_, _ = sql.WriteString(fmt.Sprintf(" LIMIT %d", d.Paginator.limit))
 	}
 
 	if len(d.Suffixes) > 0 {
@@ -427,15 +457,14 @@ func (b SelectBuilder) PaginateByPage(limit uint64, page uint64) SelectBuilder {
 }
 
 // Paginate adds pagination conditions to the query.
-func (b SelectBuilder) Paginate(p *Paginator) SelectBuilder {
-	switch p.pType {
-	case paginatorByPage:
-		return b.PaginateByPage(p.limit, p.page)
-	case paginatorByID:
-		return b.PaginateByID(p.limit, p.lastID, p.columnID)
-	}
+func (b SelectBuilder) Paginate(p Paginator) SelectBuilder {
+	return builder.Set(b, "Paginator", p).(SelectBuilder)
+}
 
-	panic("unknown paginator type")
+// SetIDColumn sets the column name to be used for pagination by ID.
+// Required in special cases when Paginate function combined with PaginatorByID.
+func (b SelectBuilder) SetIDColumn(column string) SelectBuilder {
+	return builder.Set(b, "IDColumn", column).(SelectBuilder)
 }
 
 // Limit sets a LIMIT clause on the query.

@@ -464,16 +464,24 @@ func TestPaginateByPage(t *testing.T) {
 func TestPaginate(t *testing.T) {
 	sql, args, err := Select("id", "name").
 		From("users").
-		Paginate(NewPaginatorByID(10, 20, "id")).
+		Paginate(PaginatorByID(10, 20)).
 		OrderBy("id ASC").
+		SetIDColumn("id").
 		ToSql()
 	assert.NoError(t, err)
 	assert.Equal(t, "SELECT id, name FROM users WHERE id > ? ORDER BY id ASC LIMIT 10", sql)
 	assert.Equal(t, []any{int64(20)}, args)
 
+	_, _, err = Select("id", "name").
+		From("users").
+		Paginate(PaginatorByID(10, 20)).
+		OrderBy("id ASC").
+		ToSql()
+	assert.ErrorContains(t, err, "IDColumn is required for pagination by ID")
+
 	sql, args, err = Select("id", "name").
 		From("users").
-		Paginate(NewPaginatorByPage(10, 2)).
+		Paginate(PaginatorByPage(10, 2)).
 		OrderBy("id ASC").
 		ToSql()
 
