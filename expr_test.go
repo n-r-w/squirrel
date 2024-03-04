@@ -2,6 +2,7 @@ package squirrel
 
 import (
 	dbsql "database/sql"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -509,49 +510,54 @@ func TestIn(t *testing.T) {
 	subQuery := Select("id").From("users").Where(Eq{"company": 20})
 
 	expectedSql := "SELECT id FROM users WHERE company = ?"
-	expectedArgs := []any{20}
 
 	// IN
-	sql, args, err := In("id", subQuery).ToSql()
+	sql, args, err := Select("id").From("users").Where(
+		And{
+			In("id1", subQuery),
+			In("id2", []int{1, 2, 3}),
+			In("id3", []int{}),
+			In("id4", []float64{1}),
+			In("id5", []string{"1", "2", "3"}),
+			In("id6", []bool{true, false}),
+			In("id7", 1),
+		}).ToSql()
 	assert.NoError(t, err)
-	assert.Equal(t, "id IN ("+expectedSql+")", sql)
-	assert.Equal(t, expectedArgs, args)
-
-	sql, args, err = In("id", []int{1, 2, 3}).ToSql()
-	assert.NoError(t, err)
-	assert.Equal(t, "id=ANY(?)", sql)
-	assert.Equal(t, []any{[]int{1, 2, 3}}, args)
-
-	sql, args, err = In("id", []float64{1, 2, 3}).ToSql()
-	assert.NoError(t, err)
-	assert.Equal(t, "id=ANY(?)", sql)
-	assert.Equal(t, []any{[]float64{1, 2, 3}}, args)
-
-	sql, args, err = In("id", []string{"1", "2", "3"}).ToSql()
-	assert.NoError(t, err)
-	assert.Equal(t, "id=ANY(?)", sql)
-	assert.Equal(t, []any{[]string{"1", "2", "3"}}, args)
-
-	sql, args, err = In("id", []bool{true, false}).ToSql()
-	assert.NoError(t, err)
-	assert.Equal(t, "id=ANY(?)", sql)
-	assert.Equal(t, []any{[]bool{true, false}}, args)
-
-	sql, args, err = In("id", 1).ToSql()
-	assert.NoError(t, err)
-	assert.Equal(t, "id=ANY(?)", sql)
-	assert.Equal(t, []any{1}, args)
+	assert.Equal(t, fmt.Sprintf(
+		"SELECT id FROM users WHERE (id1 IN (%s) AND id2=ANY(?) AND id4=? AND id5=ANY(?) AND id6=ANY(?) AND id7=?)",
+		expectedSql), sql)
+	assert.Equal(t, []any{
+		20,
+		[]int{1, 2, 3},
+		float64(1),
+		[]string{"1", "2", "3"},
+		[]bool{true, false},
+		1,
+	}, args)
 
 	// NOT IN
-	sql, args, err = NotIn("id", subQuery).ToSql()
+	sql, args, err = Select("id").From("users").Where(
+		And{
+			NotIn("id1", subQuery),
+			NotIn("id2", []int{1, 2, 3}),
+			NotIn("id3", []int{}),
+			NotIn("id4", []float64{1, 2, 3}),
+			NotIn("id5", []string{"1", "2", "3"}),
+			NotIn("id6", []bool{true, false}),
+			NotIn("id7", 1),
+		}).ToSql()
 	assert.NoError(t, err)
-	assert.Equal(t, "id NOT IN ("+expectedSql+")", sql)
-	assert.Equal(t, expectedArgs, args)
-
-	sql, args, err = NotIn("id", []int{1, 2, 3}).ToSql()
-	assert.NoError(t, err)
-	assert.Equal(t, "id<>ALL(?)", sql)
-	assert.Equal(t, []any{[]int{1, 2, 3}}, args)
+	assert.Equal(t, fmt.Sprintf(
+		"SELECT id FROM users WHERE (id1 NOT IN (%s) AND id2<>ALL(?) AND id4<>ALL(?) AND id5<>ALL(?) AND id6<>ALL(?) AND id7<>?)",
+		expectedSql), sql)
+	assert.Equal(t, []any{
+		20,
+		[]int{1, 2, 3},
+		[]float64{1, 2, 3},
+		[]string{"1", "2", "3"},
+		[]bool{true, false},
+		1,
+	}, args)
 }
 
 func Test_Range(t *testing.T) {

@@ -3,10 +3,68 @@ package squirrel
 import (
 	"bytes"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/lann/builder"
 )
+
+// Direction is used in OrderByDir to specify the direction of the ordering.
+type Direction int
+
+const (
+	Asc Direction = iota
+	Desc
+)
+
+type paginatorType int
+
+const (
+	paginatorByPage paginatorType = iota
+	paginatorByID
+)
+
+// Paginator is a helper object to paginate results.
+type Paginator struct {
+	limit    uint64
+	page     uint64
+	lastID   int64
+	columnID string
+	pType    paginatorType
+}
+
+// NewPaginatorByPage creates a new Paginator for pagination by page.
+func NewPaginatorByPage(limit, page uint64) *Paginator {
+	return &Paginator{
+		limit: limit,
+		page:  page,
+		pType: paginatorByPage,
+	}
+}
+
+// NewPaginatorByID creates a new Paginator for pagination by ID.
+func NewPaginatorByID(limit uint64, lastID int64, columnID string) *Paginator {
+	return &Paginator{
+		limit:    limit,
+		lastID:   lastID,
+		columnID: columnID,
+		pType:    paginatorByID,
+	}
+}
+
+// String returns the string representation of the direction.
+func (d Direction) String() string {
+	if d == Asc {
+		return "ASC"
+	}
+	return "DESC"
+}
+
+// OrderCond is used in OrderByDir to specify the condition of the ordering.
+type OrderCond struct {
+	ColumnID  int
+	Direction Direction
+}
 
 type selectData struct {
 	PlaceholderFormat PlaceholderFormat
@@ -311,6 +369,73 @@ func (b SelectBuilder) OrderBy(orderBys ...string) SelectBuilder {
 	}
 
 	return b
+}
+
+// OrderByCond adds ORDER BY expressions with direction to the query.
+// The columns map is used to map OrderCond.ColumnID to the column name.
+// Can be used to avoid hardcoding column names in the code.
+func (b SelectBuilder) OrderByCond(columns map[int]string, conds []OrderCond) SelectBuilder {
+	for i, cond := range conds {
+		if pos := slices.IndexFunc(conds[:i], func(c OrderCond) bool {
+			return c.ColumnID == cond.ColumnID
+		}); pos >= 0 && pos < i {
+			continue
+		}
+
+		column, ok := columns[cond.ColumnID]
+		if !ok {
+			panic(fmt.Sprintf("column id %d not found in columns map %v", cond.ColumnID, columns))
+		}
+
+		b = b.OrderByClause(fmt.Sprintf("%s %s", column, cond.Direction.String()))
+	}
+
+	return b
+}
+
+// Search adds a search condition to the query.
+// The search condition is a WHERE clause with LIKE expressions. All columns will be converted to text.
+// value can be a string or a number.
+func (b SelectBuilder) Search(value any, columns ...string) SelectBuilder {
+	if len(columns) == 0 {
+		return b
+	}
+
+	search := Or{}
+	for _, column := range columns {
+		search = append(search, Like{column + "::text": fmt.Sprintf("%%%v%%", value)})
+	}
+
+	return b.Where(search)
+}
+
+// PaginateByID adds a LIMIT and start from ID condition to the query.
+// WARNING: The columnID must be included in the ORDER BY clause to avoid unexpected results!
+func (b SelectBuilder) PaginateByID(limit uint64, startID int64, columnID string) SelectBuilder {
+	return b.Limit(limit).Where(Gt{columnID: startID})
+}
+
+// PaginateByPage adds a LIMIT and OFFSET condition to the query.
+// WARNING: query must be ordered to avoid unexpected results!
+func (b SelectBuilder) PaginateByPage(limit uint64, page uint64) SelectBuilder {
+	sb := b.Limit(limit)
+	if page > 1 {
+		sb = sb.Offset(limit * (page - 1))
+	}
+
+	return sb
+}
+
+// Paginate adds pagination conditions to the query.
+func (b SelectBuilder) Paginate(p *Paginator) SelectBuilder {
+	switch p.pType {
+	case paginatorByPage:
+		return b.PaginateByPage(p.limit, p.page)
+	case paginatorByID:
+		return b.PaginateByID(p.limit, p.lastID, p.columnID)
+	}
+
+	panic("unknown paginator type")
 }
 
 // Limit sets a LIMIT clause on the query.

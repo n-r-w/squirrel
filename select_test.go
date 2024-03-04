@@ -392,3 +392,92 @@ func TestRemoveColumns(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "SELECT name FROM users", sql)
 }
+
+func TestOrderByCond(t *testing.T) {
+	columns := map[int]string{
+		1: "id",
+		2: "created",
+	}
+	orderConds := []OrderCond{
+		{1, Asc},
+		{2, Desc},
+		{1, Desc}, // duplicate should be ignored
+	}
+
+	sql, args, err := Select("id").From("users").OrderByCond(columns, orderConds).ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT id FROM users ORDER BY id ASC, created DESC", sql)
+	assert.Empty(t, args)
+
+	assert.Panics(t, func() {
+		_ = Select("id").From("users").OrderByCond(columns, []OrderCond{{3, Asc}})
+	})
+}
+
+func TestSearch(t *testing.T) {
+	sql, args, err := Select("id", "name").
+		From("users").
+		Search("John", "name", "email").ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT id, name FROM users WHERE (name::text LIKE ? OR email::text LIKE ?)", sql)
+	assert.Equal(t, []any{"%John%", "%John%"}, args)
+
+	sql, args, err = Select("id", "name").
+		From("users").
+		Search(123, "name", "email").ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT id, name FROM users WHERE (name::text LIKE ? OR email::text LIKE ?)", sql)
+	assert.Equal(t, []any{"%123%", "%123%"}, args)
+}
+
+func TestPaginateByID(t *testing.T) {
+	sql, args, err := Select("id", "name").
+		From("users").
+		PaginateByID(10, 20, "id").
+		OrderBy("id ASC").
+		ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT id, name FROM users WHERE id > ? ORDER BY id ASC LIMIT 10", sql)
+	assert.Equal(t, []any{int64(20)}, args)
+}
+
+func TestPaginateByPage(t *testing.T) {
+	sql, args, err := Select("id", "name").
+		From("users").
+		PaginateByPage(10, 1).
+		OrderBy("id ASC").
+		ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT id, name FROM users ORDER BY id ASC LIMIT 10", sql)
+	assert.Empty(t, args)
+
+	sql, args, err = Select("id", "name").
+		From("users").
+		PaginateByPage(10, 3).
+		OrderBy("id ASC").
+		ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT id, name FROM users ORDER BY id ASC LIMIT 10 OFFSET 20", sql)
+	assert.Empty(t, args)
+}
+
+func TestPaginate(t *testing.T) {
+	sql, args, err := Select("id", "name").
+		From("users").
+		Paginate(NewPaginatorByID(10, 20, "id")).
+		OrderBy("id ASC").
+		ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT id, name FROM users WHERE id > ? ORDER BY id ASC LIMIT 10", sql)
+	assert.Equal(t, []any{int64(20)}, args)
+
+	sql, args, err = Select("id", "name").
+		From("users").
+		Paginate(NewPaginatorByPage(10, 2)).
+		OrderBy("id ASC").
+		ToSql()
+
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT id, name FROM users ORDER BY id ASC LIMIT 10 OFFSET 10", sql)
+	assert.Empty(t, args)
+}

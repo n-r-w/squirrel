@@ -593,12 +593,26 @@ func (e inExpr) ToSql() (sql string, args []any, err error) {
 	switch v := e.expr.(type) {
 	case Sqlizer:
 		sql, args, err = v.ToSql()
-		if err == nil {
+		if err == nil && sql != "" {
 			sql = fmt.Sprintf("%s IN (%s)", e.column, sql)
 		}
 	default:
-		args = []any{v}
-		sql = fmt.Sprintf("%s=ANY(%s)", e.column, Placeholders(len(args)))
+		if isListType(v) {
+			if reflect.ValueOf(v).Len() == 0 {
+				return "", nil, nil
+			}
+
+			if reflect.ValueOf(v).Len() == 1 {
+				args = []any{reflect.ValueOf(v).Index(0).Interface()}
+				sql = fmt.Sprintf("%s=?", e.column)
+			} else {
+				args = []any{v}
+				sql = fmt.Sprintf("%s=ANY(?)", e.column)
+			}
+		} else {
+			args = []any{v}
+			sql = fmt.Sprintf("%s=?", e.column)
+		}
 	}
 
 	return sql, args, err
@@ -617,12 +631,26 @@ func (e notInExpr) ToSql() (sql string, args []any, err error) {
 	switch v := e.expr.(type) {
 	case Sqlizer:
 		sql, args, err = v.ToSql()
-		if err == nil {
+		if err == nil && sql != "" {
 			sql = fmt.Sprintf("%s NOT IN (%s)", e.column, sql)
 		}
 	default:
-		args = []any{v}
-		sql = fmt.Sprintf("%s<>ALL(%s)", e.column, Placeholders(len(args)))
+		if isListType(v) {
+			if reflect.ValueOf(v).Len() == 0 {
+				return "", nil, nil
+			}
+
+			if reflect.ValueOf(v).Len() == 1 {
+				args = []any{reflect.ValueOf(v).Index(0).Interface()}
+				sql = fmt.Sprintf("%s<>?", e.column)
+			} else {
+				args = []any{v}
+				sql = fmt.Sprintf("%s<>ALL(?)", e.column)
+			}
+		} else {
+			args = []any{v}
+			sql = fmt.Sprintf("%s<>?", e.column)
+		}
 	}
 
 	return sql, args, err
