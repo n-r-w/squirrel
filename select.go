@@ -3,7 +3,7 @@ package squirrel
 import (
 	"bytes"
 	"fmt"
-	"slices"
+	"golang.org/x/exp/slices"
 	"strings"
 
 	"github.com/lann/builder"
