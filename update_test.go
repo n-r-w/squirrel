@@ -26,7 +26,7 @@ func TestUpdateBuilderToSql(t *testing.T) {
 
 	expectedSql := "WITH prefix AS ? " +
 		"UPDATE a SET b = ? + 1, c = ?, " +
-		"c1 = CASE status WHEN 1 THEN 2 WHEN 2 THEN 1 END, " +
+		"c1 = CASE status WHEN 1 THEN ? WHEN 2 THEN ? END, " +
 		"c2 = CASE WHEN a = 2 THEN ? WHEN a = 3 THEN ? END, " +
 		"c3 = (SELECT a FROM b) " +
 		"WHERE d = ? " +
@@ -34,7 +34,7 @@ func TestUpdateBuilderToSql(t *testing.T) {
 		"RETURNING ?"
 	assert.Equal(t, expectedSql, sql)
 
-	expectedArgs := []any{0, 1, 2, "foo", "bar", 3, 6}
+	expectedArgs := []any{0, 1, 2, 2, 1, "foo", "bar", 3, 6}
 	assert.Equal(t, expectedArgs, args)
 }
 

@@ -20,14 +20,14 @@ func TestCaseWithVal(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedSql := "SELECT CASE number " +
-		"WHEN 1 THEN 'one' " +
-		"WHEN 2 THEN 'two' " +
+		"WHEN 1 THEN ? " +
+		"WHEN 2 THEN ? " +
 		"ELSE ? " +
 		"END " +
 		"FROM table"
 	assert.Equal(t, expectedSql, sql)
 
-	expectedArgs := []any{"big number"}
+	expectedArgs := []any{"one", "two", "big number"}
 	assert.Equal(t, expectedArgs, args)
 }
 
@@ -43,12 +43,12 @@ func TestCaseWithComplexVal(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedSql := "SELECT (CASE ? > ? " +
-		"WHEN true THEN 'T' " +
+		"WHEN true THEN ? " +
 		"END) AS complexCase " +
 		"FROM table"
 	assert.Equal(t, expectedSql, sql)
 
-	expectedArgs := []any{10, 5}
+	expectedArgs := []any{10, 5, "T"}
 	assert.Equal(t, expectedArgs, args)
 }
 
@@ -90,17 +90,25 @@ func TestCaseWithExpr(t *testing.T) {
 
 	expectedSql := "SELECT CASE x = ? " +
 		"WHEN 1 > 0 THEN ? " +
-		"WHEN 1 > 0 THEN 'test' " +
-		"WHEN 1 > 0 THEN 42 " +
-		"WHEN 1 > 0 THEN 42.100000 " +
-		"WHEN 1 > 0 THEN true " +
-		"ELSE 42 " +
+		"WHEN 1 > 0 THEN ? " +
+		"WHEN 1 > 0 THEN ? " +
+		"WHEN 1 > 0 THEN ? " +
+		"WHEN 1 > 0 THEN ? " +
+		"ELSE ? " +
 		"END " +
 		"FROM table"
 
 	assert.Equal(t, expectedSql, sql)
 
-	expectedArgs := []any{true, "it's true!"}
+	expectedArgs := []any{
+		true,
+		"it's true!",
+		"test",
+		42,
+		42.1,
+		true,
+		42,
+	}
 	assert.Equal(t, expectedArgs, args)
 }
 
@@ -122,15 +130,15 @@ func TestMultipleCase(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedSql := "SELECT " +
-		"(CASE x = ? WHEN true THEN ? ELSE 42 END) AS case_noval, " +
-		"(CASE WHEN x = ? THEN 'x is zero' WHEN x > ? THEN CONCAT('x is greater than ', ?) END) AS case_expr " +
+		"(CASE x = ? WHEN true THEN ? ELSE ? END) AS case_noval, " +
+		"(CASE WHEN x = ? THEN ? WHEN x > ? THEN CONCAT('x is greater than ', ?) END) AS case_expr " +
 		"FROM table"
 
 	assert.Equal(t, expectedSql, sql)
 
 	expectedArgs := []any{
 		true, "it's true!",
-		0, 1, 2,
+		42, 0, "x is zero", 1, 2,
 	}
 	assert.Equal(t, expectedArgs, args)
 }
@@ -155,4 +163,25 @@ func TestCaseBuilderMustSql(t *testing.T) {
 		}
 	}()
 	Case("").MustSql()
+}
+
+func TestCaseNull(t *testing.T) {
+	caseStmt := Case().
+		When("1", nil).
+		Else(nil)
+
+	qb := Select().
+		Column(caseStmt).
+		From("table")
+
+	sql, args, err := qb.ToSql()
+	assert.NoError(t, err)
+
+	expectedSql := "SELECT CASE " +
+		"WHEN 1 THEN ? " +
+		"ELSE ? " +
+		"END " +
+		"FROM table"
+	assert.Equal(t, expectedSql, sql)
+	assert.Equal(t, []any{nil, nil}, args)
 }

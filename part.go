@@ -3,7 +3,6 @@ package squirrel
 import (
 	"fmt"
 	"io"
-	"reflect"
 )
 
 type part struct {
@@ -25,18 +24,7 @@ func (p part) ToSql() (sql string, args []any, err error) {
 		sql = pred
 		args = p.args
 	default:
-		v := reflect.ValueOf(pred)
-		switch v.Kind() { // nolint:exhaustive
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			sql = fmt.Sprintf("%d", v.Int())
-			args = p.args
-		case reflect.Float32, reflect.Float64:
-			sql = fmt.Sprintf("%f", v.Float())
-			args = p.args
-		default:
-			err = fmt.Errorf("expected value or Sqlizer, not %T", pred)
-		}
+		err = fmt.Errorf("expected string or Sqlizer, not %T", pred)
 	}
 	return
 }
