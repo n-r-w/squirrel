@@ -3,7 +3,6 @@ package squirrel
 import (
 	"bytes"
 	"errors"
-	"reflect"
 
 	"github.com/lann/builder"
 )
@@ -46,26 +45,45 @@ func (b *sqlizerBuffer) ToSql() (string, []any, error) {
 // whenPart is a helper structure to describe SQLs "WHEN ... THEN ..." expression
 type whenPart struct {
 	when Sqlizer
-	then Sqlizer
+
+	then      Sqlizer
+	thenValue any
+	nullThen  bool
 }
 
 func newWhenPart(when any, then any) whenPart {
-	return whenPart{newPart(when), newPart(then)}
+	wp := whenPart{
+		when: newPart(when),
+	}
+
+	switch t := then.(type) {
+	case Sqlizer:
+		wp.then = newPart(then)
+	default:
+		if t == nil {
+			wp.nullThen = true
+		} else {
+			wp.thenValue = t
+		}
+	}
+
+	return wp
 }
 
 // caseData holds all the data required to build a CASE SQL construct
 type caseData struct {
 	What      Sqlizer
 	WhenParts []whenPart
+
 	Else      Sqlizer
+	ElseValue any
+	ElseNull  bool
 }
 
 // ToSql implements Sqlizer
 func (d *caseData) ToSql() (sqlStr string, args []any, err error) {
 	if len(d.WhenParts) == 0 {
-		err = errors.New("case expression must contain at lease one WHEN clause")
-
-		return
+		return "", nil, errors.New("case expression must contain at lease one WHEN clause")
 	}
 
 	sql := sqlizerBuffer{}
@@ -78,13 +96,30 @@ func (d *caseData) ToSql() (sqlStr string, args []any, err error) {
 	for _, p := range d.WhenParts {
 		sql.WriteString("WHEN ")
 		sql.WriteSql(p.when)
+
+		if p.then == nil && p.thenValue == nil && !p.nullThen {
+			return "", nil, errors.New("When clause must have Then part")
+		}
+
 		sql.WriteString("THEN ")
-		sql.WriteSql(p.then)
+
+		if p.then != nil {
+			sql.WriteSql(p.then)
+		} else {
+			sql.WriteString(Placeholders(1) + " ")
+			sql.args = append(sql.args, p.thenValue)
+		}
+	}
+
+	if d.Else != nil || d.ElseValue != nil || d.ElseNull {
+		sql.WriteString("ELSE ")
 	}
 
 	if d.Else != nil {
-		sql.WriteString("ELSE ")
 		sql.WriteSql(d.Else)
+	} else if d.ElseValue != nil || d.ElseNull {
+		sql.WriteString(Placeholders(1) + " ")
+		sql.args = append(sql.args, d.ElseValue)
 	}
 
 	sql.WriteString("END")
@@ -120,45 +155,18 @@ func (b CaseBuilder) what(e any) CaseBuilder {
 func (b CaseBuilder) When(when any, then any) CaseBuilder {
 	// TODO: performance hint: replace slice of WhenPart with just slice of parts
 	// where even indices of the slice belong to "when"s and odd indices belong to "then"s
-
-	switch t := then.(type) {
-	case nil, Sqlizer:
-		// no-op
-	default:
-		v := reflect.ValueOf(t)
-		switch v.Kind() { // nolint:exhaustive
-		case reflect.String:
-			then = "'" + v.String() + "'"
-		case reflect.Bool:
-			if v.Bool() {
-				then = "true"
-			} else {
-				then = "false"
-			}
-		}
-	}
-
 	return builder.Append(b, "WhenParts", newWhenPart(when, then)).(CaseBuilder)
 }
 
 // Else What sets optional "ELSE ..." part for CASE construct
 func (b CaseBuilder) Else(e any) CaseBuilder {
-	switch t := e.(type) {
-	case nil, Sqlizer:
-		// no-op
+	switch e.(type) {
+	case Sqlizer:
+		return builder.Set(b, "Else", newPart(e)).(CaseBuilder)
 	default:
-		v := reflect.ValueOf(t)
-		switch v.Kind() { // nolint:exhaustive
-		case reflect.String:
-			e = "'" + v.String() + "'"
-		case reflect.Bool:
-			if v.Bool() {
-				e = "true"
-			} else {
-				e = "false"
-			}
+		if e == nil {
+			return builder.Set(b, "ElseNull", true).(CaseBuilder)
 		}
+		return builder.Set(b, "ElseValue", e).(CaseBuilder)
 	}
-
-	return builder.Set(b, "Else", newPart(e)).(CaseBuilder)
 }
