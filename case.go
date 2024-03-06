@@ -3,6 +3,9 @@ package squirrel
 import (
 	"bytes"
 	"errors"
+	"fmt"
+	"reflect"
+	"time"
 
 	"github.com/lann/builder"
 )
@@ -63,11 +66,45 @@ func newWhenPart(when any, then any) whenPart {
 		if t == nil {
 			wp.nullThen = true
 		} else {
-			wp.thenValue = t
+			sqlName, err := sqlTypeNameHelper(reflect.TypeOf(then))
+			if err != nil {
+				wp.thenValue = t
+			} else {
+				wp.then = newPart(Expr(fmt.Sprintf("CAST(? AS %s)", sqlName), t))
+			}
 		}
 	}
 
 	return wp
+}
+
+func sqlTypeNameHelper(t reflect.Type) (string, error) {
+	switch t.Kind() { //nolint:exhaustive
+	case reflect.Bool:
+		return "boolean", nil
+	case reflect.Int64, reflect.Uint64, reflect.Int, reflect.Uint:
+		return "bigint", nil
+	case reflect.Int32, reflect.Uint32:
+		return "integer", nil
+	case reflect.Int16, reflect.Uint16, reflect.Int8, reflect.Uint8:
+		return "smallint", nil
+	case reflect.Float32, reflect.Float64:
+		return "double precision", nil
+	case reflect.String:
+		return "text", nil
+	case reflect.Struct:
+		if t == reflect.TypeOf(time.Time{}) {
+			return "timestamp with time zone", nil
+		}
+	case reflect.Slice, reflect.Array:
+		sqlType, err := sqlTypeNameHelper(t.Elem())
+		if err != nil {
+			return "", err
+		}
+		return sqlType + "[]", nil
+	}
+
+	return "", fmt.Errorf("unsupported type %s", t.Name())
 }
 
 // caseData holds all the data required to build a CASE SQL construct
