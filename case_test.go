@@ -1,7 +1,9 @@
 package squirrel
 
 import (
+	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -20,8 +22,8 @@ func TestCaseWithVal(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedSql := "SELECT CASE number " +
-		"WHEN 1 THEN ? " +
-		"WHEN 2 THEN ? " +
+		"WHEN 1 THEN CAST(? AS text) " +
+		"WHEN 2 THEN CAST(? AS text) " +
 		"ELSE ? " +
 		"END " +
 		"FROM table"
@@ -43,7 +45,7 @@ func TestCaseWithComplexVal(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedSql := "SELECT (CASE ? > ? " +
-		"WHEN true THEN ? " +
+		"WHEN true THEN CAST(? AS text) " +
 		"END) AS complexCase " +
 		"FROM table"
 	assert.Equal(t, expectedSql, sql)
@@ -76,7 +78,7 @@ func TestCaseWithNoVal(t *testing.T) {
 
 func TestCaseWithExpr(t *testing.T) {
 	caseStmt := Case(Expr("x = ?", true)).
-		When("1 > 0", Expr("?", "it's true!")).
+		When("1 > 0", Expr("?::text", "it's true!")).
 		When("1 > 0", "test").
 		When("1 > 0", 42).
 		When("1 > 0", 42.1).
@@ -89,11 +91,11 @@ func TestCaseWithExpr(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedSql := "SELECT CASE x = ? " +
-		"WHEN 1 > 0 THEN ? " +
-		"WHEN 1 > 0 THEN ? " +
-		"WHEN 1 > 0 THEN ? " +
-		"WHEN 1 > 0 THEN ? " +
-		"WHEN 1 > 0 THEN ? " +
+		"WHEN 1 > 0 THEN ?::text " +
+		"WHEN 1 > 0 THEN CAST(? AS text) " +
+		"WHEN 1 > 0 THEN CAST(? AS bigint) " +
+		"WHEN 1 > 0 THEN CAST(? AS double precision) " +
+		"WHEN 1 > 0 THEN CAST(? AS boolean) " +
 		"ELSE ? " +
 		"END " +
 		"FROM table"
@@ -131,7 +133,7 @@ func TestMultipleCase(t *testing.T) {
 
 	expectedSql := "SELECT " +
 		"(CASE x = ? WHEN true THEN ? ELSE ? END) AS case_noval, " +
-		"(CASE WHEN x = ? THEN ? WHEN x > ? THEN CONCAT('x is greater than ', ?) END) AS case_expr " +
+		"(CASE WHEN x = ? THEN CAST(? AS text) WHEN x > ? THEN CONCAT('x is greater than ', ?) END) AS case_expr " +
 		"FROM table"
 
 	assert.Equal(t, expectedSql, sql)
@@ -184,4 +186,44 @@ func TestCaseNull(t *testing.T) {
 		"FROM table"
 	assert.Equal(t, expectedSql, sql)
 	assert.Equal(t, []any{nil, nil}, args)
+}
+
+func TestSqlTypeNameHelper(t *testing.T) {
+	tests := []struct {
+		name    string
+		arg     reflect.Type
+		want    string
+		wantErr bool
+	}{
+		{"Bool", reflect.TypeOf(true), "boolean", false},
+		{"Int64", reflect.TypeOf(int64(1)), "bigint", false},
+		{"Uint64", reflect.TypeOf(uint64(1)), "bigint", false},
+		{"Int", reflect.TypeOf(int(1)), "bigint", false},
+		{"Uint", reflect.TypeOf(uint(1)), "bigint", false},
+		{"Int32", reflect.TypeOf(int32(1)), "integer", false},
+		{"Uint32", reflect.TypeOf(uint32(1)), "integer", false},
+		{"Int16", reflect.TypeOf(int16(1)), "smallint", false},
+		{"Uint16", reflect.TypeOf(uint16(1)), "smallint", false},
+		{"Int8", reflect.TypeOf(int8(1)), "smallint", false},
+		{"Uint8", reflect.TypeOf(uint8(1)), "smallint", false},
+		{"Float32", reflect.TypeOf(float32(1.0)), "double precision", false},
+		{"Float64", reflect.TypeOf(float64(1.0)), "double precision", false},
+		{"String", reflect.TypeOf(string("test")), "text", false},
+		{"Time", reflect.TypeOf(time.Time{}), "timestamp with time zone", false},
+		{"Slice", reflect.TypeOf([]int{1, 2, 3}), "bigint[]", false},
+		{"Unsupported", reflect.TypeOf(struct{}{}), "", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := sqlTypeNameHelper(tt.arg)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("sqlTypeNameHelper() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("sqlTypeNameHelper() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

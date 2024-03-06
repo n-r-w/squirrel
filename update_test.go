@@ -26,7 +26,7 @@ func TestUpdateBuilderToSql(t *testing.T) {
 
 	expectedSql := "WITH prefix AS ? " +
 		"UPDATE a SET b = ? + 1, c = ?, " +
-		"c1 = CASE status WHEN 1 THEN ? WHEN 2 THEN ? END, " +
+		"c1 = CASE status WHEN 1 THEN CAST(? AS bigint) WHEN 2 THEN CAST(? AS bigint) END, " +
 		"c2 = CASE WHEN a = 2 THEN ? WHEN a = 3 THEN ? END, " +
 		"c3 = (SELECT a FROM b) " +
 		"WHERE d = ? " +
