@@ -141,10 +141,6 @@ func (d *selectData) toSqlRaw() (sqlStr string, args []any, err error) {
 		}
 	}
 
-	if d.Paginator.pType != paginatorByID && d.IDColumn != "" {
-		return "", nil, fmt.Errorf("IDColumn can be used only in combination with PaginatorByID function")
-	}
-
 	whereParts := make([]Sqlizer, len(d.WhereParts))
 	copy(whereParts, d.WhereParts)
 
