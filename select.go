@@ -18,12 +18,12 @@ const (
 	Desc
 )
 
-type paginatorType int
+type PaginatorType int
 
 const (
-	paginatorUndefined paginatorType = iota
-	paginatorByPage
-	paginatorByID
+	PaginatorTypeUndefined PaginatorType = iota
+	PaginatorTypeByPage
+	PaginatorTypeByID
 )
 
 // Paginator is a helper object to paginate results.
@@ -31,15 +31,15 @@ type Paginator struct {
 	limit  uint64
 	page   uint64
 	lastID int64
-	pType  paginatorType
+	pType  PaginatorType
 }
 
 // PaginatorByPage creates a new Paginator for pagination by page.
-func PaginatorByPage(limit, page uint64) Paginator {
+func PaginatorByPage(pageSize, pageNum uint64) Paginator {
 	return Paginator{
-		limit: limit,
-		page:  page,
-		pType: paginatorByPage,
+		limit: pageSize,
+		page:  pageNum,
+		pType: PaginatorTypeByPage,
 	}
 }
 
@@ -48,8 +48,33 @@ func PaginatorByID(limit uint64, lastID int64) Paginator {
 	return Paginator{
 		limit:  limit,
 		lastID: lastID,
-		pType:  paginatorByID,
+		pType:  PaginatorTypeByID,
 	}
+}
+
+// PageSize returns the page size for PaginatorTypeByPage
+func (p Paginator) PageSize() uint64 {
+	return p.limit
+}
+
+// PageNumber returns the page number for PaginatorTypeByPage
+func (p Paginator) PageNumber() uint64 {
+	return p.page
+}
+
+// Limit returns the limit for PaginatorTypeByID
+func (p Paginator) Limit() uint64 {
+	return p.limit
+}
+
+// LastID returns the last ID for PaginatorTypeByID
+func (p Paginator) LastID() int64 {
+	return p.lastID
+}
+
+// Type returns the type of the paginator.
+func (p Paginator) Type() PaginatorType {
+	return p.pType
 }
 
 // String returns the string representation of the direction.
@@ -144,7 +169,7 @@ func (d *selectData) toSqlRaw() (sqlStr string, args []any, err error) {
 	whereParts := make([]Sqlizer, len(d.WhereParts))
 	copy(whereParts, d.WhereParts)
 
-	if d.Paginator.pType == paginatorByID {
+	if d.Paginator.pType == PaginatorTypeByID {
 		if d.IDColumn == "" {
 			return "", nil, fmt.Errorf("IDColumn is required for pagination by ID")
 		}
@@ -182,7 +207,7 @@ func (d *selectData) toSqlRaw() (sqlStr string, args []any, err error) {
 	}
 
 	if len(d.Limit) > 0 {
-		if d.Paginator.pType != paginatorUndefined {
+		if d.Paginator.pType != PaginatorTypeUndefined {
 			return "", nil, fmt.Errorf("limit and paginator cannot be used together")
 		}
 
@@ -191,7 +216,7 @@ func (d *selectData) toSqlRaw() (sqlStr string, args []any, err error) {
 	}
 
 	if len(d.Offset) > 0 {
-		if d.Paginator.pType != paginatorUndefined {
+		if d.Paginator.pType != PaginatorTypeUndefined {
 			return "", nil, fmt.Errorf("offset and paginator cannot be used together")
 		}
 
@@ -199,12 +224,12 @@ func (d *selectData) toSqlRaw() (sqlStr string, args []any, err error) {
 		_, _ = sql.WriteString(d.Offset)
 	}
 
-	if d.Paginator.pType == paginatorByPage {
+	if d.Paginator.pType == PaginatorTypeByPage {
 		_, _ = sql.WriteString(fmt.Sprintf(" LIMIT %d", d.Paginator.limit))
 		if d.Paginator.page > 1 {
 			_, _ = sql.WriteString(fmt.Sprintf(" OFFSET %d", d.Paginator.limit*(d.Paginator.page-1)))
 		}
-	} else if d.Paginator.pType == paginatorByID {
+	} else if d.Paginator.pType == PaginatorTypeByID {
 		_, _ = sql.WriteString(fmt.Sprintf(" LIMIT %d", d.Paginator.limit))
 	}
 

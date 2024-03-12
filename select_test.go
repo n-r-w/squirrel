@@ -462,9 +462,14 @@ func TestPaginateByPage(t *testing.T) {
 }
 
 func TestPaginate(t *testing.T) {
+	pByID := PaginatorByID(10, 20)
+	assert.Equal(t, pByID.Limit(), uint64(10))
+	assert.Equal(t, pByID.LastID(), int64(20))
+	assert.Equal(t, pByID.Type(), PaginatorTypeByID)
+
 	sql, args, err := Select("id", "name").
 		From("users").
-		Paginate(PaginatorByID(10, 20)).
+		Paginate(pByID).
 		OrderBy("id ASC").
 		SetIDColumn("id").
 		ToSql()
@@ -474,14 +479,18 @@ func TestPaginate(t *testing.T) {
 
 	_, _, err = Select("id", "name").
 		From("users").
-		Paginate(PaginatorByID(10, 20)).
+		Paginate(pByID).
 		OrderBy("id ASC").
 		ToSql()
 	assert.ErrorContains(t, err, "IDColumn is required for pagination by ID")
 
+	pByPage := PaginatorByPage(10, 2)
+	assert.Equal(t, pByPage.PageSize(), uint64(10))
+	assert.Equal(t, pByPage.PageNumber(), uint64(2))
+
 	sql, args, err = Select("id", "name").
 		From("users").
-		Paginate(PaginatorByPage(10, 2)).
+		Paginate(pByPage).
 		OrderBy("id ASC").
 		ToSql()
 
