@@ -546,6 +546,15 @@ func (a alias) GroupBy(groupBys ...string) SelectBuilder {
 	return a.builder.GroupBy(prepareAliasColumns(a.table, a.prefix, groupBys...)...)
 }
 
+// OrderBy sets the order by for the table alias.
+func (a alias) OrderBy(orderBys ...string) SelectBuilder {
+	if len(orderBys) == 0 {
+		return a.builder
+	}
+
+	return a.builder.OrderBy(prepareAliasColumns(a.table, a.prefix, orderBys...)...)
+}
+
 func prepareAliasColumns(table string, prefix []string, columns ...string) []string {
 	columnsPrepared := make([]string, 0, len(columns))
 

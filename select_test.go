@@ -504,15 +504,17 @@ func TestTableAlias(t *testing.T) {
 		Alias("u").Columns("id", "name").
 		From("users u").
 		Alias("u").GroupBy("id", "name").
+		Alias("u").OrderBy("id").
 		ToSql()
 	assert.NoError(t, err)
-	assert.Equal(t, "SELECT u.id, u.name FROM users u GROUP BY u.id, u.name", sql)
+	assert.Equal(t, "SELECT u.id, u.name FROM users u GROUP BY u.id, u.name ORDER BY u.id", sql)
 
 	sql, _, err = Select().
 		Alias("u", "pref").Columns("id", "name").
 		From("users u").
 		Alias("u", "pref").GroupBy("id", "name").
+		Alias("u", "pref").OrderBy("id").
 		ToSql()
 	assert.NoError(t, err)
-	assert.Equal(t, "SELECT u.id AS pref_id, u.name AS pref_name FROM users u GROUP BY u.id AS pref_id, u.name AS pref_name", sql)
+	assert.Equal(t, "SELECT u.id AS pref_id, u.name AS pref_name FROM users u GROUP BY u.id AS pref_id, u.name AS pref_name ORDER BY u.id AS pref_id", sql)
 }
