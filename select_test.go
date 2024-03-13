@@ -498,3 +498,19 @@ func TestPaginate(t *testing.T) {
 	assert.Equal(t, "SELECT id, name FROM users ORDER BY id ASC LIMIT 10 OFFSET 10", sql)
 	assert.Empty(t, args)
 }
+
+func TestTableAliasSelect(t *testing.T) {
+	sql, _, err := Select().
+		Alias("u").Columns("id", "name").
+		From("users u").
+		ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT u.id, u.name FROM users u", sql)
+
+	sql, _, err = Select().
+		Alias("u", "pref").Columns("id", "name").
+		From("users u").
+		ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT u.id AS pref_id, u.name AS pref_name FROM users u", sql)
+}
