@@ -221,12 +221,14 @@ Select("id", "name").From("users").Paginate(PaginatorByPage(10, 3)).OrderBy("id 
 Select().
 Alias("u").Columns("id", "name").
 From("users u")
-// SELECT u.id, u.name FROM users u
+Alias("u").GroupBy("id", "name")
+// SELECT u.id, u.name FROM users u GROUP BY u.id, u.name
 
 Select().
 Alias("u", "pref").Columns("id", "name").
 From("users u")
-// SELECT u.id AS pref_id, u.name AS pref_name FROM users u
+Alias("u", "pref").GroupBy("id", "name")
+// SELECT u.id AS pref_id, u.name AS pref_name FROM users u GROUP BY u.id AS pref_id, u.name AS pref_name
 ```
 
 ## Miscellaneous

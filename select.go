@@ -534,25 +534,38 @@ func (a alias) Columns(columns ...string) SelectBuilder {
 		return a.builder
 	}
 
+	return a.builder.Columns(prepareAliasColumns(a.table, a.prefix, columns...)...)
+}
+
+// GroupBy sets the group by for the table alias.
+func (a alias) GroupBy(groupBys ...string) SelectBuilder {
+	if len(groupBys) == 0 {
+		return a.builder
+	}
+
+	return a.builder.GroupBy(prepareAliasColumns(a.table, a.prefix, groupBys...)...)
+}
+
+func prepareAliasColumns(table string, prefix []string, columns ...string) []string {
 	columnsPrepared := make([]string, 0, len(columns))
 
 	for _, column := range columns {
-		if len(a.prefix) == 0 {
-			if a.table == "" {
+		if len(prefix) == 0 {
+			if table == "" {
 				columnsPrepared = append(columnsPrepared, column)
 			} else {
-				columnsPrepared = append(columnsPrepared, fmt.Sprintf("%s.%s", a.table, column))
+				columnsPrepared = append(columnsPrepared, fmt.Sprintf("%s.%s", table, column))
 			}
 		} else {
-			if a.table == "" {
-				columnsPrepared = append(columnsPrepared, fmt.Sprintf("%s AS %s_%s", column, a.prefix[0], column))
+			if table == "" {
+				columnsPrepared = append(columnsPrepared, fmt.Sprintf("%s AS %s_%s", column, prefix[0], column))
 			} else {
-				columnsPrepared = append(columnsPrepared, fmt.Sprintf("%s.%s AS %s_%s", a.table, column, a.prefix[0], column))
+				columnsPrepared = append(columnsPrepared, fmt.Sprintf("%s.%s AS %s_%s", table, column, prefix[0], column))
 			}
 		}
 	}
 
-	return a.builder.Columns(columnsPrepared...)
+	return columnsPrepared
 }
 
 // Alias creates a new table alias for the select builder.

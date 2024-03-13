@@ -499,18 +499,20 @@ func TestPaginate(t *testing.T) {
 	assert.Empty(t, args)
 }
 
-func TestTableAliasSelect(t *testing.T) {
+func TestTableAlias(t *testing.T) {
 	sql, _, err := Select().
 		Alias("u").Columns("id", "name").
 		From("users u").
+		Alias("u").GroupBy("id", "name").
 		ToSql()
 	assert.NoError(t, err)
-	assert.Equal(t, "SELECT u.id, u.name FROM users u", sql)
+	assert.Equal(t, "SELECT u.id, u.name FROM users u GROUP BY u.id, u.name", sql)
 
 	sql, _, err = Select().
 		Alias("u", "pref").Columns("id", "name").
 		From("users u").
+		Alias("u", "pref").GroupBy("id", "name").
 		ToSql()
 	assert.NoError(t, err)
-	assert.Equal(t, "SELECT u.id AS pref_id, u.name AS pref_name FROM users u", sql)
+	assert.Equal(t, "SELECT u.id AS pref_id, u.name AS pref_name FROM users u GROUP BY u.id AS pref_id, u.name AS pref_name", sql)
 }
