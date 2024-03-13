@@ -215,6 +215,22 @@ Select("id", "name").From("users").Paginate(PaginatorByPage(10, 3)).OrderBy("id 
 // SELECT id, name FROM users ORDER BY id ASC LIMIT 10 OFFSET 20
 ```
 
+### Alias for Select statement: allows to use table alias in the query for multiple columns and add prefix to the column names if needed
+
+```go
+Select().
+Alias("u").Columns("id", "name").
+From("users u")
+Alias("u").GroupBy("id", "name")
+// SELECT u.id, u.name FROM users u GROUP BY u.id, u.name
+
+Select().
+Alias("u", "pref").Columns("id", "name").
+From("users u")
+Alias("u", "pref").GroupBy("id", "name")
+// SELECT u.id AS pref_id, u.name AS pref_name FROM users u GROUP BY u.id AS pref_id, u.name AS pref_name
+```
+
 ## Miscellaneous
 
 - Added a linter and fixed all warnings.

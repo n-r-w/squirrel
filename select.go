@@ -521,3 +521,60 @@ func (b SelectBuilder) Suffix(sql string, args ...any) SelectBuilder {
 func (b SelectBuilder) SuffixExpr(e Sqlizer) SelectBuilder {
 	return builder.Append(b, "Suffixes", e).(SelectBuilder)
 }
+
+type alias struct {
+	builder SelectBuilder
+	table   string
+	prefix  []string
+}
+
+// Columns sets the columns for the table alias.
+func (a alias) Columns(columns ...string) SelectBuilder {
+	if len(columns) == 0 {
+		return a.builder
+	}
+
+	return a.builder.Columns(prepareAliasColumns(a.table, a.prefix, columns...)...)
+}
+
+// GroupBy sets the group by for the table alias.
+func (a alias) GroupBy(groupBys ...string) SelectBuilder {
+	if len(groupBys) == 0 {
+		return a.builder
+	}
+
+	return a.builder.GroupBy(prepareAliasColumns(a.table, a.prefix, groupBys...)...)
+}
+
+func prepareAliasColumns(table string, prefix []string, columns ...string) []string {
+	columnsPrepared := make([]string, 0, len(columns))
+
+	for _, column := range columns {
+		if len(prefix) == 0 {
+			if table == "" {
+				columnsPrepared = append(columnsPrepared, column)
+			} else {
+				columnsPrepared = append(columnsPrepared, fmt.Sprintf("%s.%s", table, column))
+			}
+		} else {
+			if table == "" {
+				columnsPrepared = append(columnsPrepared, fmt.Sprintf("%s AS %s_%s", column, prefix[0], column))
+			} else {
+				columnsPrepared = append(columnsPrepared, fmt.Sprintf("%s.%s AS %s_%s", table, column, prefix[0], column))
+			}
+		}
+	}
+
+	return columnsPrepared
+}
+
+// Alias creates a new table alias for the select builder.
+// Prefix is used to add a prefix to the beginning of the column names. If no prefix, the column name will be used.
+// All prefixes except the first will be ignored.
+func (b SelectBuilder) Alias(table string, prefix ...string) alias {
+	return alias{
+		builder: b,
+		table:   table,
+		prefix:  prefix,
+	}
+}
