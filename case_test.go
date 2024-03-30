@@ -215,14 +215,14 @@ func TestSqlTypeNameHelper(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(t1 *testing.T) {
 			got, err := sqlTypeNameHelper(tt.arg)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("sqlTypeNameHelper() error = %v, wantErr %v", err, tt.wantErr)
+				t1.Errorf("sqlTypeNameHelper() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got != tt.want {
-				t.Errorf("sqlTypeNameHelper() = %v, want %v", got, tt.want)
+				t1.Errorf("sqlTypeNameHelper() = %v, want %v", got, tt.want)
 			}
 		})
 	}

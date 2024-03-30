@@ -144,11 +144,15 @@ sq.Sum(subQuery)
 Column(sq.Expr("id = ANY(?)", []int{1,2,3}))
 ```
 
-### Support for `IN` and `NOT IN` clause
+### Support for `IN`, `NOT` and `NOT IN` clause
 
 ```go
-In("id", []int{1, 2, 3})
-NotIn("id", subQuery)
+In("id", []int{1, 2, 3}) // id=ANY(ARRAY[1,2,3])
+NotIn("id", subQuery) // id NOT IN (<subQuery>)
+
+Not(Select("col").From("table")) // NOT (SELECT col FROM table)
+// double NOT is removed
+Not(Not(Select("col").From("table"))) // SELECT col FROM table
 ```
 
 ### Range function
@@ -231,6 +235,24 @@ From("users u")
 Alias("u", "pref").GroupBy("id", "name").
 Alias("u", "pref").OrderBy("id").
 // SELECT SELECT u.id AS pref_id, u.name AS pref_name FROM users u GROUP BY u.id AS pref_id, u.name AS pref_name ORDER BY u.id AS pref_id
+```
+
+### CTE support (taken from <https://github.com/joshring/squirrel>)
+
+```go
+With("alias").As(
+  Select("col1").From("table"),
+).Select(
+  Select("col2").From("alias"),
+)
+// WITH alias AS (SELECT col1 FROM table) SELECT col2 FROM alias
+
+WithRecursive("alias").As(
+  Select("col1").From("table"),
+).Select(
+  Select("col2").From("alias"),
+)
+// WITH RECURSIVE alias AS (SELECT col1 FROM table) SELECT col2 FROM alias
 ```
 
 ## Miscellaneous

@@ -127,8 +127,8 @@ type aliasExpr struct {
 // Ex:
 //
 //	.Column(Alias(caseStmt, "case_column"))
-func Alias(e Sqlizer, alias string) aliasExpr {
-	return aliasExpr{e, alias}
+func Alias(e Sqlizer, a string) aliasExpr {
+	return aliasExpr{e, a}
 }
 
 func (e aliasExpr) ToSql() (sql string, args []any, err error) {
@@ -740,4 +740,46 @@ func clearEmptyValue(v any) any {
 	}
 
 	return nil
+}
+
+type cteExpr struct {
+	expr Sqlizer
+	cte  string
+}
+
+// Cte allows to define CTE (Common Table Expressions) in SQL query
+func Cte(e Sqlizer, cte string) cteExpr {
+	return cteExpr{e, cte}
+}
+
+// ToSql builds the query into a SQL string and bound args.
+func (e cteExpr) ToSql() (sql string, args []any, err error) {
+	sql, args, err = e.expr.ToSql()
+	if err == nil {
+		sql = fmt.Sprintf("%s AS (%s)", e.cte, sql)
+	}
+	return
+}
+
+type notExpr struct {
+	expr Sqlizer
+}
+
+// ToSql builds the query into a SQL string and bound args.
+func (e notExpr) ToSql() (sql string, args []any, err error) {
+	sql, args, err = e.expr.ToSql()
+	if err == nil {
+		sql = fmt.Sprintf("NOT (%s)", sql)
+	}
+	return
+}
+
+// Not is a helper function to negate a condition.
+func Not(e Sqlizer) Sqlizer {
+	// check nested NOT
+	if n, ok := e.(notExpr); ok {
+		return n.expr
+	}
+
+	return notExpr{e}
 }

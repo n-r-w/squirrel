@@ -601,3 +601,29 @@ func ExampleEq() {
 		"company": 20,
 	})
 }
+
+func TestNotExprToSql(t *testing.T) {
+	e := Eq{"id": 1}
+	n := Not(e)
+	sql, args, err := n.ToSql()
+	assert.NoError(t, err)
+
+	expectedSql := "NOT (id = ?)"
+	assert.Equal(t, expectedSql, sql)
+
+	expectedArgs := []any{1}
+	assert.Equal(t, expectedArgs, args)
+}
+
+func TestNotExprNestedToSql(t *testing.T) {
+	e := Eq{"id": 1}
+	n := Not(Not(e))
+	sql, args, err := n.ToSql()
+	assert.NoError(t, err)
+
+	expectedSql := "id = ?"
+	assert.Equal(t, expectedSql, sql)
+
+	expectedArgs := []any{1}
+	assert.Equal(t, expectedArgs, args)
+}
