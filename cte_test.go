@@ -129,3 +129,25 @@ func TestWithAsQuery_Update(t *testing.T) {
 
 	assert.Equal(t, expectedSql, q)
 }
+
+func TestCTEPlaceholderFormat(t *testing.T) {
+	q := With("table1").As(
+		Select("col1", "col2").
+			From("table1").
+			Where(Eq{"col1": 1})).
+		Update(
+			Update("table2").
+				Set("col3", 2))
+
+	sql, _, err := q.PlaceholderFormat(Question).ToSql()
+	assert.NoError(t, err)
+
+	expectedSql := "WITH table1 AS (SELECT col1, col2 FROM table1 WHERE col1 = ?) UPDATE table2 SET col3 = ?"
+	assert.Equal(t, expectedSql, sql)
+
+	sql, _, err = q.PlaceholderFormat(Dollar).ToSql()
+	assert.NoError(t, err)
+
+	expectedSql = "WITH table1 AS (SELECT col1, col2 FROM table1 WHERE col1 = $1) UPDATE table2 SET col3 = $2"
+	assert.Equal(t, expectedSql, sql)
+}
