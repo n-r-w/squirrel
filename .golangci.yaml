@@ -37,8 +37,8 @@ linters-settings:
       - octalLiteral
       - whyNoLint
       - wrapperFunc
-      - unlabelStmt # выдает ошибку там где ее нет
-      - sloppyReassign # довольно странный линтер, предлагает выполнять "shadows declaration" внутри if
+      - unlabelStmt # false positive
+      - sloppyReassign # quite strange linter, suggests performing "shadows declaration" inside if.
     settings:
       # don't forget to run "golangci-lint cache clean" after changes in the .go files below
       hugeParam:

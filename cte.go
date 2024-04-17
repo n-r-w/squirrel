@@ -53,8 +53,8 @@ func (d *commonTableExpressionsData) toSql() (sqlStr string, args []any, err err
 		return "", nil, err
 	}
 
-	sqlStr = sql.String()
-	return sqlStr, args, nil
+	sqlStr, err = d.PlaceholderFormat.ReplacePlaceholders(sql.String())
+	return sqlStr, args, err
 }
 
 func (d *commonTableExpressionsData) ToSql() (sql string, args []any, err error) {
