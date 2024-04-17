@@ -518,3 +518,14 @@ func TestTableAlias(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "SELECT u.id AS pref_id, u.name AS pref_name FROM users u GROUP BY u.id AS pref_id, u.name AS pref_name ORDER BY u.id AS pref_id", sql)
 }
+
+func TestSelectWith(t *testing.T) {
+	q := Select().
+		With("table1", Select("a").From("table2")).
+		Columns("a").
+		From("table3")
+
+	sql, _, err := q.ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "WITH table1 AS ( SELECT a FROM table2 ) SELECT a FROM table3", sql)
+}

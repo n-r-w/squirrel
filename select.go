@@ -587,3 +587,8 @@ func (b SelectBuilder) Alias(table string, prefix ...string) alias {
 		prefix:  prefix,
 	}
 }
+
+// With adds a CTE (Common Table Expression) to the query.
+func (b SelectBuilder) With(cteName string, cte SelectBuilder) SelectBuilder {
+	return b.PrefixExpr(cte.Prefix(fmt.Sprintf("WITH %s AS (", cteName)).Suffix(")"))
+}
