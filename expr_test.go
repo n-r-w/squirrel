@@ -506,6 +506,120 @@ func TestAggr(t *testing.T) {
 	assert.Equal(t, expectedArgs, args)
 }
 
+func TestEqual(t *testing.T) {
+	q := Select("col1").
+		From("table1").
+		Where(
+			Equal(
+				Select("col2").
+					From("table2"),
+				2),
+		)
+	sql, args, err := q.ToSql()
+	assert.NoError(t, err)
+
+	expectedArgs := []any{2}
+	assert.Equal(t, expectedArgs, args)
+
+	expectedSql := "SELECT col1 FROM table1 WHERE (SELECT col2 FROM table2) = ?"
+	assert.Equal(t, expectedSql, sql)
+}
+
+func TestNotEqual(t *testing.T) {
+	q := Select("col1").
+		From("table1").
+		Where(
+			NotEqual(
+				Select("col2").
+					From("table2"),
+				2),
+		)
+	sql, args, err := q.ToSql()
+	assert.NoError(t, err)
+
+	expectedArgs := []any{2}
+	assert.Equal(t, expectedArgs, args)
+
+	expectedSql := "SELECT col1 FROM table1 WHERE (SELECT col2 FROM table2) <> ?"
+	assert.Equal(t, expectedSql, sql)
+}
+
+func TestGreater(t *testing.T) {
+	q := Select("col1").
+		From("table1").
+		Where(
+			Greater(
+				Select("col2").
+					From("table2"),
+				2),
+		)
+	sql, args, err := q.ToSql()
+	assert.NoError(t, err)
+
+	expectedArgs := []any{2}
+	assert.Equal(t, expectedArgs, args)
+
+	expectedSql := "SELECT col1 FROM table1 WHERE (SELECT col2 FROM table2) > ?"
+	assert.Equal(t, expectedSql, sql)
+}
+
+func TestGreaterOrEqual(t *testing.T) {
+	q := Select("col1").
+		From("table1").
+		Where(
+			GreaterOrEqual(
+				Select("col2").
+					From("table2"),
+				2),
+		)
+	sql, args, err := q.ToSql()
+	assert.NoError(t, err)
+
+	expectedArgs := []any{2}
+	assert.Equal(t, expectedArgs, args)
+
+	expectedSql := "SELECT col1 FROM table1 WHERE (SELECT col2 FROM table2) >= ?"
+	assert.Equal(t, expectedSql, sql)
+}
+
+func TestLess(t *testing.T) {
+	q := Select("col1").
+		From("table1").
+		Where(
+			Less(
+				Select("col2").
+					From("table2"),
+				2),
+		)
+	sql, args, err := q.ToSql()
+	assert.NoError(t, err)
+
+	expectedArgs := []any{2}
+	assert.Equal(t, expectedArgs, args)
+
+	expectedSql := "SELECT col1 FROM table1 WHERE (SELECT col2 FROM table2) < ?"
+	assert.Equal(t, expectedSql, sql)
+}
+
+func TestLessOrEqual(t *testing.T) {
+	q := Select("col1").
+		From("table1").
+		Where(
+			LessOrEqual(
+				Select("col2").
+					From("table2"),
+				2),
+		)
+	sql, args, err := q.ToSql()
+	assert.NoError(t, err)
+
+	expectedArgs := []any{2}
+	assert.Equal(t, expectedArgs, args)
+
+	expectedSql := "SELECT col1 FROM table1 WHERE (SELECT col2 FROM table2) <= ?"
+	assert.Equal(t, expectedSql, sql)
+}
+
 func TestIn(t *testing.T) {
 	subQuery := Select("id").From("users").Where(Eq{"company": 20})
 

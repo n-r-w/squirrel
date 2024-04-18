@@ -539,7 +539,7 @@ func (e avgExpr) ToSql() (sql string, args []any, err error) {
 	return
 }
 
-// ExistsExpr helps to use EXISTS in SQL query
+// existsExpr helps to use EXISTS in SQL query
 type existsExpr struct {
 	expr Sqlizer
 }
@@ -558,7 +558,7 @@ func (e existsExpr) ToSql() (sql string, args []any, err error) {
 	return
 }
 
-// NotExistsExpr helps to use NOT EXISTS in SQL query
+// notExistsExpr helps to use NOT EXISTS in SQL query
 type notExistsExpr struct {
 	expr Sqlizer
 }
@@ -577,7 +577,118 @@ func (e notExistsExpr) ToSql() (sql string, args []any, err error) {
 	return
 }
 
-// InExpr helps to use IN in SQL query
+// equalExpr helps to use = in SQL query
+type equalExpr struct {
+	expr  Sqlizer
+	value any
+}
+
+// Equal allows to use = in SQL query
+// Ex: SelectBuilder.Where(Equal(sq.Select(...), 1))
+func Equal(e Sqlizer, v any) equalExpr {
+	return equalExpr{e, v}
+}
+
+func (e equalExpr) ToSql() (sql string, args []any, err error) {
+	sql, args, err = e.expr.ToSql()
+	if err == nil {
+		sql = fmt.Sprintf("(%s) = ?", sql)
+		args = append(args, e.value)
+	}
+	return
+}
+
+// notEqualExpr helps to use <> in SQL query
+type notEqualExpr equalExpr
+
+// NotEqual allows to use <> in SQL query
+// Ex: SelectBuilder.Where(NotEqual(sq.Select(...), 1))
+func NotEqual(e Sqlizer, v any) notEqualExpr {
+	return notEqualExpr{e, v}
+}
+
+func (e notEqualExpr) ToSql() (sql string, args []any, err error) {
+	sql, args, err = e.expr.ToSql()
+	if err == nil {
+		sql = fmt.Sprintf("(%s) <> ?", sql)
+		args = append(args, e.value)
+	}
+	return
+}
+
+// greaterExpr helps to use > in SQL query
+type greaterExpr equalExpr
+
+// Greater allows to use > in SQL query
+// Ex: SelectBuilder.Where(Greater(sq.Select(...), 1))
+func Greater(e Sqlizer, v any) greaterExpr {
+	return greaterExpr{e, v}
+}
+
+func (e greaterExpr) ToSql() (sql string, args []any, err error) {
+	sql, args, err = e.expr.ToSql()
+	if err == nil {
+		sql = fmt.Sprintf("(%s) > ?", sql)
+		args = append(args, e.value)
+	}
+	return
+}
+
+// greaterOrEqualExpr helps to use >= in SQL query
+type greaterOrEqualExpr equalExpr
+
+// GreaterOrEqual allows to use >= in SQL query
+// Ex: SelectBuilder.Where(GreaterOrEqual(sq.Select(...), 1))
+func GreaterOrEqual(e Sqlizer, v any) greaterOrEqualExpr {
+	return greaterOrEqualExpr{e, v}
+}
+
+func (e greaterOrEqualExpr) ToSql() (sql string, args []any, err error) {
+	sql, args, err = e.expr.ToSql()
+	if err == nil {
+		sql = fmt.Sprintf("(%s) >= ?", sql)
+		args = append(args, e.value)
+	}
+	return
+}
+
+// lessExpr helps to use < in SQL query
+type lessExpr equalExpr
+
+// Less allows to use < in SQL query
+// Ex: SelectBuilder.Where(Less(sq.Select(...), 1))
+func Less(e Sqlizer, v any) lessExpr {
+	return lessExpr{e, v}
+}
+
+func (e lessExpr) ToSql() (sql string, args []any, err error) {
+	sql, args, err = e.expr.ToSql()
+	if err == nil {
+		sql = fmt.Sprintf("(%s) < ?", sql)
+		args = append(args, e.value)
+	}
+	return
+}
+
+// lessOrEqualExpr helps to use <= in SQL query
+type lessOrEqualExpr equalExpr
+
+// LessOrEqual allows to use <= in SQL query
+// Ex: SelectBuilder.Where(LessOrEqual(sq.Select(...), 1))
+func LessOrEqual(e Sqlizer, v any) lessOrEqualExpr {
+	return lessOrEqualExpr{e, v}
+}
+
+func (e lessOrEqualExpr) ToSql() (sql string, args []any, err error) {
+	sql, args, err = e.expr.ToSql()
+	if err == nil {
+		sql = fmt.Sprintf("(%s) <= ?", sql)
+		args = append(args, e.value)
+	}
+	return
+}
+
+// inExpr helps to use IN in SQL query
 type inExpr struct {
 	column string
 	expr   any
@@ -618,7 +729,7 @@ func (e inExpr) ToSql() (sql string, args []any, err error) {
 	return sql, args, err
 }
 
-// NotInExpr helps to use NOT IN in SQL query
+// notInExpr helps to use NOT IN in SQL query
 type notInExpr inExpr
 
 // NotIn allows to use NOT IN in SQL query
