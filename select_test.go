@@ -412,6 +412,16 @@ func TestOrderByCond(t *testing.T) {
 	assert.Panics(t, func() {
 		_ = Select("id").From("users").OrderByCond(columns, []OrderCond{{3, Asc}})
 	})
+
+	// test with options
+	sql, args, err = Select("id").From("users").OrderByCond(columns, orderConds,
+		OrderByCondOption{
+			ColumnID:  2,
+			NullsType: OrderNullsLast,
+		}).ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT id FROM users ORDER BY id ASC, created DESC NULLS LAST", sql)
+	assert.Empty(t, args)
 }
 
 func TestSearch(t *testing.T) {
