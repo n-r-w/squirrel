@@ -426,10 +426,36 @@ func (b SelectBuilder) OrderBy(orderBys ...string) SelectBuilder {
 	return b
 }
 
+// OrderNullsType is used to specify the order of NULLs in ORDER BY clause.
+type OrderNullsType int
+
+const (
+	OrderNullsUndefined OrderNullsType = iota
+	OrderNullsFirst                    // ORDER BY ... NULLS FIRST
+	OrderNullsLast                     // ORDER BY ... NULLS LAST
+)
+
+// String returns the string representation of the order of NULLs.
+func (o OrderNullsType) String() string {
+	if o == OrderNullsFirst {
+		return "FIRST"
+	}
+	if o == OrderNullsLast {
+		return "LAST"
+	}
+	return ""
+}
+
+// OrderByCondOption is used to specify additional options for OrderByCond.
+type OrderByCondOption struct {
+	ColumnID  int
+	NullsType OrderNullsType
+}
+
 // OrderByCond adds ORDER BY expressions with direction to the query.
 // The columns map is used to map OrderCond.ColumnID to the column name.
 // Can be used to avoid hardcoding column names in the code.
-func (b SelectBuilder) OrderByCond(columns map[int]string, conds []OrderCond) SelectBuilder {
+func (b SelectBuilder) OrderByCond(columns map[int]string, conds []OrderCond, opts ...OrderByCondOption) SelectBuilder {
 	for i, cond := range conds {
 		if pos := slices.IndexFunc(conds[:i], func(c OrderCond) bool {
 			return c.ColumnID == cond.ColumnID
@@ -442,7 +468,19 @@ func (b SelectBuilder) OrderByCond(columns map[int]string, conds []OrderCond) Se
 			panic(fmt.Sprintf("column id %d not found in columns map %v", cond.ColumnID, columns))
 		}
 
-		b = b.OrderByClause(fmt.Sprintf("%s %s", column, cond.Direction.String()))
+		nullsType := OrderNullsUndefined
+		for _, opt := range opts {
+			if opt.ColumnID == cond.ColumnID {
+				nullsType = opt.NullsType
+				break
+			}
+		}
+
+		if nullsType == OrderNullsUndefined {
+			b = b.OrderByClause(fmt.Sprintf("%s %s", column, cond.Direction.String()))
+		} else {
+			b = b.OrderByClause(fmt.Sprintf("%s %s NULLS %s", column, cond.Direction.String(), nullsType.String()))
+		}
 	}
 
 	return b
