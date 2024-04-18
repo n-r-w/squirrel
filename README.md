@@ -155,6 +155,17 @@ Not(Select("col").From("table")) // NOT (SELECT col FROM table)
 Not(Not(Select("col").From("table"))) // SELECT col FROM table
 ```
 
+### Equal, NotEqual, Greater, GreaterOrEqual, Less, LessOrEqual functions
+
+```go
+Equal(Select("col").From("table"), 1) // (SELECT col FROM table) = 1
+NotEqual(Select("col").From("table"), 1) // (SELECT col FROM table) != 1
+Greater(Select("col").From("table"), 1) // (SELECT col FROM table) > 1
+GreaterOrEqual(Select("col").From("table"), 1) // (SELECT col FROM table) >= 1
+Less(Select("col").From("table"), 1) // (SELECT col FROM table) < 1
+LessOrEqual(Select("col").From("table"), 1) // (SELECT col FROM table) <= 1
+```
+
 ### Range function
 
 ```go
