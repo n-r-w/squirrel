@@ -170,7 +170,7 @@ LessOrEqual(Select("col").From("table"), 1) // (SELECT col FROM table) <= 1
 
 ```go
 Coalesce("value", Select("col1").From("table1"), Select("col2").From("table2"))
-// COALESCE(SELECT col1 FROM table1, SELECT col2 FROM table2, ?), args = ["value"]
+// COALESCE((SELECT col1 FROM table1), (SELECT col2 FROM table2, ?)), args = ["value"]
 ```
 
 ### Range function

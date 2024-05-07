@@ -919,7 +919,7 @@ func (e coalesceExpr) ToSql() (sql string, args []any, err error) {
 			continue
 		}
 
-		exprs = append(exprs, exprSQL)
+		exprs = append(exprs, fmt.Sprintf("(%s)", exprSQL))
 	}
 
 	if len(exprs) == 0 {

@@ -749,7 +749,7 @@ func TestCoalesceToSql(t *testing.T) {
 	sql, args, err := b.ToSql()
 	assert.NoError(t, err)
 
-	expectedSql := "COALESCE(SELECT col1 FROM table1, SELECT col2 FROM table2, ?)"
+	expectedSql := "COALESCE((SELECT col1 FROM table1), (SELECT col2 FROM table2), ?)"
 	assert.Equal(t, expectedSql, sql)
 
 	expectedArgs := []any{"value"}
