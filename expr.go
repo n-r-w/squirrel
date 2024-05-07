@@ -894,3 +894,39 @@ func Not(e Sqlizer) Sqlizer {
 
 	return notExpr{e}
 }
+
+type coalesceExpr struct {
+	exprs []Sqlizer
+	null  any
+}
+
+// Coalesce is a helper function to use COALESCE in SQL query
+func Coalesce(nullValue any, exprs ...Sqlizer) Sqlizer {
+	return coalesceExpr{exprs, nullValue}
+}
+
+// ToSql builds the query into a SQL string and bound args.
+func (e coalesceExpr) ToSql() (sql string, args []any, err error) {
+	exprs := make([]string, 0, len(e.exprs))
+	for _, expr := range e.exprs {
+		var exprSQL string
+		exprSQL, args, err = expr.ToSql()
+		if err != nil {
+			return
+		}
+
+		if exprSQL == "" {
+			continue
+		}
+
+		exprs = append(exprs, exprSQL)
+	}
+
+	if len(exprs) == 0 {
+		return "", nil, nil
+	}
+
+	sql = fmt.Sprintf("COALESCE(%s, ?)", strings.Join(exprs, ", "))
+	args = append(args, e.null)
+	return
+}
