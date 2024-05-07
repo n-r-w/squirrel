@@ -741,3 +741,17 @@ func TestNotExprNestedToSql(t *testing.T) {
 	expectedArgs := []any{1}
 	assert.Equal(t, expectedArgs, args)
 }
+
+func TestCoalesceToSql(t *testing.T) {
+	b := Coalesce("value",
+		Select("col1").From("table1"),
+		Select("col2").From("table2"))
+	sql, args, err := b.ToSql()
+	assert.NoError(t, err)
+
+	expectedSql := "COALESCE((SELECT col1 FROM table1), (SELECT col2 FROM table2), ?)"
+	assert.Equal(t, expectedSql, sql)
+
+	expectedArgs := []any{"value"}
+	assert.Equal(t, expectedArgs, args)
+}
