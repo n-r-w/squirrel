@@ -108,6 +108,8 @@ func (b CommonTableExpressionsBuilder) Cte(cte string) CommonTableExpressionsBui
 // As sets the expression for the Cte
 func (b CommonTableExpressionsBuilder) As(as SelectBuilder) CommonTableExpressionsBuilder {
 	data := builder.GetStruct(b).(commonTableExpressionsData)
+	// Prevent misnumbered parameters in nested selects similar to #183.
+	as = as.PlaceholderFormat(Question)
 	return builder.Append(b, "Ctes", cteExpr{as, data.CurrentCteName}).(CommonTableExpressionsBuilder)
 }
 
