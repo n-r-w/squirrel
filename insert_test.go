@@ -92,3 +92,39 @@ func TestInsertBuilderReplace(t *testing.T) {
 
 	assert.Equal(t, expectedSQL, sql)
 }
+
+func TestInsertSelect_DollarPlaceholderNumberingConflict(t *testing.T) {
+	b := StatementBuilder.PlaceholderFormat(Dollar)
+
+	sub := b.Select("a").From("src").Where("x = ?", 1)
+
+	q := b.Insert("dst").
+		Columns("a").
+		Select(sub).
+		Suffix("RETURNING id = ?", 2)
+
+	sql, args, err := q.ToSql()
+	assert.NoError(t, err)
+
+	expectedSQL := "INSERT INTO dst (a) SELECT a FROM src WHERE x = $1 RETURNING id = $2"
+	assert.Equal(t, expectedSQL, sql)
+	assert.Equal(t, []any{1, 2}, args)
+}
+
+func TestInsertValuesNestedSelect_DollarPlaceholderNumberingConflict(t *testing.T) {
+	b := StatementBuilder.PlaceholderFormat(Dollar)
+
+	inner := b.Select("y").From("t2").Where("y = ?", 7)
+
+	q := b.Insert("t1").
+		Columns("x").
+		Values(inner).
+		Suffix("RETURNING z = ?", 8)
+
+	sql, args, err := q.ToSql()
+	assert.NoError(t, err)
+
+	expectedSQL := "INSERT INTO t1 (x) VALUES (SELECT y FROM t2 WHERE y = $1) RETURNING z = $2"
+	assert.Equal(t, expectedSQL, sql)
+	assert.Equal(t, []any{7, 8}, args)
+}

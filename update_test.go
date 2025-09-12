@@ -86,3 +86,20 @@ func TestUpdateBuilderFromSelect(t *testing.T) {
 		"WHERE employees.account_id = subquery.id"
 	assert.Equal(t, expectedSql, sql)
 }
+
+func TestUpdateSetWithNestedSelect_DollarPlaceholderNumberingConflict(t *testing.T) {
+	b := StatementBuilder.PlaceholderFormat(Dollar)
+
+	sub := b.Select("max(val)").From("t2").Where("id = ?", 11)
+
+	q := b.Update("t1").
+		Set("col", sub).
+		Where("id = ?", 12)
+
+	sql, args, err := q.ToSql()
+	assert.NoError(t, err)
+
+	expectedSQL := "UPDATE t1 SET col = (SELECT max(val) FROM t2 WHERE id = $1) WHERE id = $2"
+	assert.Equal(t, expectedSQL, sql)
+	assert.Equal(t, []any{11, 12}, args)
+}

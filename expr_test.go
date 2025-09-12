@@ -755,3 +755,139 @@ func TestCoalesceToSql(t *testing.T) {
 	expectedArgs := []any{"value"}
 	assert.Equal(t, expectedArgs, args)
 }
+
+func TestExistsAndNotExistsNestedSelect_DollarPlaceholderNumbering(t *testing.T) {
+	sb := StatementBuilder.PlaceholderFormat(Dollar)
+
+	inner := sb.Select("1").From("s").Where("a = ?", 10)
+	q1 := sb.Select("1").From("t").Where(Exists(inner)).Where("b = ?", 20)
+	sql, args, err := q1.ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT 1 FROM t WHERE EXISTS (SELECT 1 FROM s WHERE a = $1) AND b = $2", sql)
+	assert.Equal(t, []any{10, 20}, args)
+
+	q2 := sb.Select("1").From("t").Where(NotExists(inner)).Where("b = ?", 20)
+	sql, args, err = q2.ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT 1 FROM t WHERE NOT EXISTS (SELECT 1 FROM s WHERE a = $1) AND b = $2", sql)
+	assert.Equal(t, []any{10, 20}, args)
+}
+
+func TestCoalesceNestedSelect_DollarPlaceholderNumbering(t *testing.T) {
+	sb := StatementBuilder.PlaceholderFormat(Dollar)
+
+	in1 := sb.Select("x").From("a").Where("a.c = ?", 10)
+	in2 := sb.Select("y").From("b").Where("b.d = ?", 20)
+
+	co := Coalesce("fallback", in1, in2)
+	q := sb.Select("id").Column(co).From("t").Where("z = ?", 30)
+
+	sql, args, err := q.ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT id, COALESCE((SELECT x FROM a WHERE a.c = $1), (SELECT y FROM b WHERE b.d = $2), $3) FROM t WHERE z = $4", sql)
+	assert.Equal(t, []any{10, 20, "fallback", 30}, args)
+}
+
+func TestAggrNestedSelect_DollarPlaceholderNumbering(t *testing.T) {
+	sb := StatementBuilder.PlaceholderFormat(Dollar)
+	inner := sb.Select("x").From("a").Where("a.c = ?", 11)
+
+	// SUM
+	q := sb.Select("id").Column(Sum(inner)).From("t").Where("b = ?", 22)
+	sql, args, err := q.ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT id, SUM(SELECT x FROM a WHERE a.c = $1) FROM t WHERE b = $2", sql)
+	assert.Equal(t, []any{11, 22}, args)
+
+	// COUNT
+	q = sb.Select("id").Column(Count(inner)).From("t").Where("b = ?", 22)
+	sql, args, err = q.ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT id, COUNT(SELECT x FROM a WHERE a.c = $1) FROM t WHERE b = $2", sql)
+	assert.Equal(t, []any{11, 22}, args)
+
+	// MIN
+	q = sb.Select("id").Column(Min(inner)).From("t").Where("b = ?", 22)
+	sql, args, err = q.ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT id, MIN(SELECT x FROM a WHERE a.c = $1) FROM t WHERE b = $2", sql)
+	assert.Equal(t, []any{11, 22}, args)
+
+	// MAX
+	q = sb.Select("id").Column(Max(inner)).From("t").Where("b = ?", 22)
+	sql, args, err = q.ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT id, MAX(SELECT x FROM a WHERE a.c = $1) FROM t WHERE b = $2", sql)
+	assert.Equal(t, []any{11, 22}, args)
+
+	// AVG
+	q = sb.Select("id").Column(Avg(inner)).From("t").Where("b = ?", 22)
+	sql, args, err = q.ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT id, AVG(SELECT x FROM a WHERE a.c = $1) FROM t WHERE b = $2", sql)
+	assert.Equal(t, []any{11, 22}, args)
+}
+
+func TestComparisonsNestedSelect_DollarPlaceholderNumbering(t *testing.T) {
+	sb := StatementBuilder.PlaceholderFormat(Dollar)
+	inner := sb.Select("v").From("t2").Where("w = ?", 7)
+
+	// =
+	q := sb.Select("1").From("t1").Where(Equal(inner, 5)).Where("x = ?", 9)
+	sql, args, err := q.ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT 1 FROM t1 WHERE (SELECT v FROM t2 WHERE w = $1) = $2 AND x = $3", sql)
+	assert.Equal(t, []any{7, 5, 9}, args)
+
+	// <>
+	q = sb.Select("1").From("t1").Where(NotEqual(inner, 5)).Where("x = ?", 9)
+	sql, args, err = q.ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT 1 FROM t1 WHERE (SELECT v FROM t2 WHERE w = $1) <> $2 AND x = $3", sql)
+	assert.Equal(t, []any{7, 5, 9}, args)
+
+	// >
+	q = sb.Select("1").From("t1").Where(Greater(inner, 5)).Where("x = ?", 9)
+	sql, args, err = q.ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT 1 FROM t1 WHERE (SELECT v FROM t2 WHERE w = $1) > $2 AND x = $3", sql)
+	assert.Equal(t, []any{7, 5, 9}, args)
+
+	// >=
+	q = sb.Select("1").From("t1").Where(GreaterOrEqual(inner, 5)).Where("x = ?", 9)
+	sql, args, err = q.ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT 1 FROM t1 WHERE (SELECT v FROM t2 WHERE w = $1) >= $2 AND x = $3", sql)
+	assert.Equal(t, []any{7, 5, 9}, args)
+
+	// <
+	q = sb.Select("1").From("t1").Where(Less(inner, 5)).Where("x = ?", 9)
+	sql, args, err = q.ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT 1 FROM t1 WHERE (SELECT v FROM t2 WHERE w = $1) < $2 AND x = $3", sql)
+	assert.Equal(t, []any{7, 5, 9}, args)
+
+	// <=
+	q = sb.Select("1").From("t1").Where(LessOrEqual(inner, 5)).Where("x = ?", 9)
+	sql, args, err = q.ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT 1 FROM t1 WHERE (SELECT v FROM t2 WHERE w = $1) <= $2 AND x = $3", sql)
+	assert.Equal(t, []any{7, 5, 9}, args)
+}
+
+func TestInNotInNestedSelect_DollarPlaceholderNumbering(t *testing.T) {
+	sb := StatementBuilder.PlaceholderFormat(Dollar)
+	inner := sb.Select("id").From("ids").Where("k = ?", 10)
+
+	q := sb.Select("1").From("t").Where(In("x", inner)).Where("y = ?", 20)
+	sql, args, err := q.ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT 1 FROM t WHERE x IN (SELECT id FROM ids WHERE k = $1) AND y = $2", sql)
+	assert.Equal(t, []any{10, 20}, args)
+
+	q = sb.Select("1").From("t").Where(NotIn("x", inner)).Where("y = ?", 20)
+	sql, args, err = q.ToSql()
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT 1 FROM t WHERE x NOT IN (SELECT id FROM ids WHERE k = $1) AND y = $2", sql)
+	assert.Equal(t, []any{10, 20}, args)
+}

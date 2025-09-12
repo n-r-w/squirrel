@@ -23,7 +23,7 @@ type insertData struct {
 	Select            *SelectBuilder
 }
 
-func (d *insertData) ToSql() (sqlStr string, args []any, err error) {
+func (d *insertData) toSqlRaw() (sqlStr string, args []any, err error) {
 	if len(d.Into) == 0 {
 		err = errors.New("insert statements must specify a table")
 		return "", nil, err
@@ -83,8 +83,16 @@ func (d *insertData) ToSql() (sqlStr string, args []any, err error) {
 		}
 	}
 
-	sqlStr, err = d.PlaceholderFormat.ReplacePlaceholders(sql.String())
-	return sqlStr, args, err
+	return sql.String(), args, nil
+}
+
+func (d *insertData) ToSql() (sqlStr string, args []any, err error) {
+	s, a, e := d.toSqlRaw()
+	if e != nil {
+		return "", nil, e
+	}
+	sqlStr, err = d.PlaceholderFormat.ReplacePlaceholders(s)
+	return sqlStr, a, err
 }
 
 func (d *insertData) appendValuesToSQL(w io.Writer, args []any) ([]any, error) {
@@ -99,7 +107,7 @@ func (d *insertData) appendValuesToSQL(w io.Writer, args []any) ([]any, error) {
 		valueStrings := make([]string, len(row))
 		for v, val := range row {
 			if vs, ok := val.(Sqlizer); ok {
-				vsql, vargs, err := vs.ToSql()
+				vsql, vargs, err := nestedToSql(vs)
 				if err != nil {
 					return nil, err
 				}
@@ -123,7 +131,7 @@ func (d *insertData) appendSelectToSQL(w io.Writer, args []any) ([]any, error) {
 		return args, errors.New("select clause for insert statements are not set")
 	}
 
-	selectClause, sArgs, err := d.Select.ToSql()
+	selectClause, sArgs, err := d.Select.toSqlRaw()
 	if err != nil {
 		return args, err
 	}
@@ -213,6 +221,7 @@ func (b InsertBuilder) SuffixExpr(e Sqlizer) InsertBuilder {
 // note that it will reset all previous columns and values was set if any
 func (b InsertBuilder) SetMap(clauses map[string]any) InsertBuilder {
 	// Keep the columns in a consistent order by sorting the column key string.
+
 	cols := make([]string, 0, len(clauses))
 	for col := range clauses {
 		cols = append(cols, col)
@@ -238,4 +247,10 @@ func (b InsertBuilder) Select(sb SelectBuilder) InsertBuilder {
 
 func (b InsertBuilder) statementKeyword(keyword string) InsertBuilder {
 	return builder.Set(b, "StatementKeyword", keyword).(InsertBuilder)
+}
+
+// toSqlRaw builds SQL with raw placeholders ("?") without applying PlaceholderFormat.
+func (b InsertBuilder) toSqlRaw() (string, []any, error) {
+	data := builder.GetStruct(b).(insertData)
+	return data.toSqlRaw()
 }

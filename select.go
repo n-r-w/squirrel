@@ -224,13 +224,14 @@ func (d *selectData) toSqlRaw() (sqlStr string, args []any, err error) {
 		_, _ = sql.WriteString(d.Offset)
 	}
 
-	if d.Paginator.pType == PaginatorTypeByPage {
-		_, _ = sql.WriteString(fmt.Sprintf(" LIMIT %d", d.Paginator.limit))
+	switch d.Paginator.pType {
+	case PaginatorTypeByPage:
+		_, _ = fmt.Fprintf(sql, " LIMIT %d", d.Paginator.limit)
 		if d.Paginator.page > 1 {
-			_, _ = sql.WriteString(fmt.Sprintf(" OFFSET %d", d.Paginator.limit*(d.Paginator.page-1)))
+			_, _ = fmt.Fprintf(sql, " OFFSET %d", d.Paginator.limit*(d.Paginator.page-1))
 		}
-	} else if d.Paginator.pType == PaginatorTypeByID {
-		_, _ = sql.WriteString(fmt.Sprintf(" LIMIT %d", d.Paginator.limit))
+	case PaginatorTypeByID:
+		_, _ = fmt.Fprintf(sql, " LIMIT %d", d.Paginator.limit)
 	}
 
 	if len(d.Suffixes) > 0 {
@@ -338,8 +339,6 @@ func (b SelectBuilder) From(from string) SelectBuilder {
 
 // FromSelect sets a subquery into the FROM clause of the query.
 func (b SelectBuilder) FromSelect(from SelectBuilder, alias string) SelectBuilder {
-	// Prevent misnumbered parameters in nested selects (#183).
-	from = from.PlaceholderFormat(Question)
 	return builder.Set(b, "From", Alias(from, alias)).(SelectBuilder)
 }
 

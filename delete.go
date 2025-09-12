@@ -19,7 +19,7 @@ type deleteData struct {
 	Suffixes          []Sqlizer
 }
 
-func (d *deleteData) ToSql() (sqlStr string, args []any, err error) {
+func (d *deleteData) toSqlRaw() (sqlStr string, args []any, err error) {
 	if len(d.From) == 0 {
 		err = fmt.Errorf("delete statements must specify a From table")
 		return "", nil, err
@@ -33,14 +33,14 @@ func (d *deleteData) ToSql() (sqlStr string, args []any, err error) {
 			return "", nil, err
 		}
 
-		sql.WriteString(" ")
+		_, _ = sql.WriteString(" ")
 	}
 
-	sql.WriteString("DELETE FROM ")
-	sql.WriteString(d.From)
+	_, _ = sql.WriteString("DELETE FROM ")
+	_, _ = sql.WriteString(d.From)
 
 	if len(d.WhereParts) > 0 {
-		sql.WriteString(" WHERE ")
+		_, _ = sql.WriteString(" WHERE ")
 		args, err = appendToSql(d.WhereParts, sql, " AND ", args)
 		if err != nil {
 			return "", nil, err
@@ -70,8 +70,16 @@ func (d *deleteData) ToSql() (sqlStr string, args []any, err error) {
 		}
 	}
 
-	sqlStr, err = d.PlaceholderFormat.ReplacePlaceholders(sql.String())
-	return sqlStr, args, err
+	return sql.String(), args, nil
+}
+
+func (d *deleteData) ToSql() (sqlStr string, args []any, err error) {
+	s, a, e := d.toSqlRaw()
+	if e != nil {
+		return "", nil, e
+	}
+	sqlStr, err = d.PlaceholderFormat.ReplacePlaceholders(s)
+	return sqlStr, a, err
 }
 
 // Builder
@@ -144,6 +152,12 @@ func (b DeleteBuilder) Limit(limit uint64) DeleteBuilder {
 // Offset sets a OFFSET clause on the query.
 func (b DeleteBuilder) Offset(offset uint64) DeleteBuilder {
 	return builder.Set(b, "Offset", fmt.Sprintf("%d", offset)).(DeleteBuilder)
+}
+
+// toSqlRaw builds SQL with raw placeholders ("?") without applying PlaceholderFormat.
+func (b DeleteBuilder) toSqlRaw() (string, []any, error) {
+	data := builder.GetStruct(b).(deleteData)
+	return data.toSqlRaw()
 }
 
 // Suffix adds an expression to the end of the query

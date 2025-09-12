@@ -65,7 +65,7 @@ func (e expr) ToSql() (sql string, args []any, err error) {
 
 		if as, ok := ap[0].(Sqlizer); ok {
 			// sqlizer argument; expand it and append the result
-			isql, iargs, err = as.ToSql()
+			isql, iargs, err = nestedToSql(as)
 			buf.WriteString(sp[:i])
 			buf.WriteString(isql)
 			args = append(args, iargs...)
@@ -93,7 +93,7 @@ func (ce concatExpr) ToSql() (sql string, args []any, err error) {
 		case string:
 			sql += p
 		case Sqlizer:
-			pSql, pArgs, err := p.ToSql()
+			pSql, pArgs, err := nestedToSql(p)
 			if err != nil {
 				return "", nil, err
 			}
@@ -132,7 +132,7 @@ func Alias(e Sqlizer, a string) aliasExpr {
 }
 
 func (e aliasExpr) ToSql() (sql string, args []any, err error) {
-	sql, args, err = e.expr.ToSql()
+	sql, args, err = nestedToSql(e.expr)
 	if err == nil {
 		sql = fmt.Sprintf("(%s) AS %s", sql, e.alias)
 	}
@@ -456,7 +456,7 @@ func Sum(e Sqlizer) sumExpr {
 }
 
 func (e sumExpr) ToSql() (sql string, args []any, err error) {
-	sql, args, err = e.expr.ToSql()
+	sql, args, err = nestedToSql(e.expr)
 	if err == nil {
 		sql = fmt.Sprintf("SUM(%s)", sql)
 	}
@@ -475,7 +475,7 @@ func Count(e Sqlizer) countExpr {
 }
 
 func (e countExpr) ToSql() (sql string, args []any, err error) {
-	sql, args, err = e.expr.ToSql()
+	sql, args, err = nestedToSql(e.expr)
 	if err == nil {
 		sql = fmt.Sprintf("COUNT(%s)", sql)
 	}
@@ -494,7 +494,7 @@ func Min(e Sqlizer) minExpr {
 }
 
 func (e minExpr) ToSql() (sql string, args []any, err error) {
-	sql, args, err = e.expr.ToSql()
+	sql, args, err = nestedToSql(e.expr)
 	if err == nil {
 		sql = fmt.Sprintf("MIN(%s)", sql)
 	}
@@ -513,7 +513,7 @@ func Max(e Sqlizer) maxExpr {
 }
 
 func (e maxExpr) ToSql() (sql string, args []any, err error) {
-	sql, args, err = e.expr.ToSql()
+	sql, args, err = nestedToSql(e.expr)
 	if err == nil {
 		sql = fmt.Sprintf("MAX(%s)", sql)
 	}
@@ -532,7 +532,7 @@ func Avg(e Sqlizer) avgExpr {
 }
 
 func (e avgExpr) ToSql() (sql string, args []any, err error) {
-	sql, args, err = e.expr.ToSql()
+	sql, args, err = nestedToSql(e.expr)
 	if err == nil {
 		sql = fmt.Sprintf("AVG(%s)", sql)
 	}
@@ -551,7 +551,7 @@ func Exists(e Sqlizer) existsExpr {
 }
 
 func (e existsExpr) ToSql() (sql string, args []any, err error) {
-	sql, args, err = e.expr.ToSql()
+	sql, args, err = nestedToSql(e.expr)
 	if err == nil {
 		sql = fmt.Sprintf("EXISTS (%s)", sql)
 	}
@@ -570,7 +570,7 @@ func NotExists(e Sqlizer) notExistsExpr {
 }
 
 func (e notExistsExpr) ToSql() (sql string, args []any, err error) {
-	sql, args, err = e.expr.ToSql()
+	sql, args, err = nestedToSql(e.expr)
 	if err == nil {
 		sql = fmt.Sprintf("NOT EXISTS (%s)", sql)
 	}
@@ -590,7 +590,7 @@ func Equal(e Sqlizer, v any) equalExpr {
 }
 
 func (e equalExpr) ToSql() (sql string, args []any, err error) {
-	sql, args, err = e.expr.ToSql()
+	sql, args, err = nestedToSql(e.expr)
 	if err == nil {
 		sql = fmt.Sprintf("(%s) = ?", sql)
 		args = append(args, e.value)
@@ -608,7 +608,7 @@ func NotEqual(e Sqlizer, v any) notEqualExpr {
 }
 
 func (e notEqualExpr) ToSql() (sql string, args []any, err error) {
-	sql, args, err = e.expr.ToSql()
+	sql, args, err = nestedToSql(e.expr)
 	if err == nil {
 		sql = fmt.Sprintf("(%s) <> ?", sql)
 		args = append(args, e.value)
@@ -626,7 +626,7 @@ func Greater(e Sqlizer, v any) greaterExpr {
 }
 
 func (e greaterExpr) ToSql() (sql string, args []any, err error) {
-	sql, args, err = e.expr.ToSql()
+	sql, args, err = nestedToSql(e.expr)
 	if err == nil {
 		sql = fmt.Sprintf("(%s) > ?", sql)
 		args = append(args, e.value)
@@ -644,7 +644,7 @@ func GreaterOrEqual(e Sqlizer, v any) greaterOrEqualExpr {
 }
 
 func (e greaterOrEqualExpr) ToSql() (sql string, args []any, err error) {
-	sql, args, err = e.expr.ToSql()
+	sql, args, err = nestedToSql(e.expr)
 	if err == nil {
 		sql = fmt.Sprintf("(%s) >= ?", sql)
 		args = append(args, e.value)
@@ -662,7 +662,7 @@ func Less(e Sqlizer, v any) lessExpr {
 }
 
 func (e lessExpr) ToSql() (sql string, args []any, err error) {
-	sql, args, err = e.expr.ToSql()
+	sql, args, err = nestedToSql(e.expr)
 	if err == nil {
 		sql = fmt.Sprintf("(%s) < ?", sql)
 		args = append(args, e.value)
@@ -680,7 +680,7 @@ func LessOrEqual(e Sqlizer, v any) lessOrEqualExpr {
 }
 
 func (e lessOrEqualExpr) ToSql() (sql string, args []any, err error) {
-	sql, args, err = e.expr.ToSql()
+	sql, args, err = nestedToSql(e.expr)
 	if err == nil {
 		sql = fmt.Sprintf("(%s) <= ?", sql)
 		args = append(args, e.value)
@@ -703,7 +703,7 @@ func In(column string, e any) inExpr {
 func (e inExpr) ToSql() (sql string, args []any, err error) {
 	switch v := e.expr.(type) {
 	case Sqlizer:
-		sql, args, err = v.ToSql()
+		sql, args, err = nestedToSql(v)
 		if err == nil && sql != "" {
 			sql = fmt.Sprintf("%s IN (%s)", e.column, sql)
 		}
@@ -741,7 +741,7 @@ func NotIn(column string, e any) notInExpr {
 func (e notInExpr) ToSql() (sql string, args []any, err error) {
 	switch v := e.expr.(type) {
 	case Sqlizer:
-		sql, args, err = v.ToSql()
+		sql, args, err = nestedToSql(v)
 		if err == nil && sql != "" {
 			sql = fmt.Sprintf("%s NOT IN (%s)", e.column, sql)
 		}
@@ -801,7 +801,7 @@ func (e rangeExpr) ToSql() (sql string, args []any, err error) {
 		s = LtOrEq{e.column: e.end}
 	}
 
-	return s.ToSql()
+	return nestedToSql(s)
 }
 
 // EqNotEmpty ignores empty and zero values in Eq map.
@@ -818,7 +818,7 @@ func (eq EqNotEmpty) ToSql() (sql string, args []any, err error) {
 		}
 	}
 
-	return vals.ToSql()
+	return nestedToSql(vals)
 }
 
 // clearEmptyValue recursively clears empty and zero values in any type.
@@ -865,7 +865,7 @@ func Cte(e Sqlizer, cte string) cteExpr {
 
 // ToSql builds the query into a SQL string and bound args.
 func (e cteExpr) ToSql() (sql string, args []any, err error) {
-	sql, args, err = e.expr.ToSql()
+	sql, args, err = nestedToSql(e.expr)
 	if err == nil {
 		sql = fmt.Sprintf("%s AS (%s)", e.cte, sql)
 	}
@@ -878,7 +878,7 @@ type notExpr struct {
 
 // ToSql builds the query into a SQL string and bound args.
 func (e notExpr) ToSql() (sql string, args []any, err error) {
-	sql, args, err = e.expr.ToSql()
+	sql, args, err = nestedToSql(e.expr)
 	if err == nil {
 		sql = fmt.Sprintf("NOT (%s)", sql)
 	}
@@ -908,9 +908,11 @@ func Coalesce(nullValue any, exprs ...Sqlizer) Sqlizer {
 // ToSql builds the query into a SQL string and bound args.
 func (e coalesceExpr) ToSql() (sql string, args []any, err error) {
 	exprs := make([]string, 0, len(e.exprs))
+	allArgs := make([]any, 0)
 	for _, expr := range e.exprs {
 		var exprSQL string
-		exprSQL, args, err = expr.ToSql()
+		var a []any
+		exprSQL, a, err = nestedToSql(expr)
 		if err != nil {
 			return
 		}
@@ -920,6 +922,9 @@ func (e coalesceExpr) ToSql() (sql string, args []any, err error) {
 		}
 
 		exprs = append(exprs, fmt.Sprintf("(%s)", exprSQL))
+		if len(a) > 0 {
+			allArgs = append(allArgs, a...)
+		}
 	}
 
 	if len(exprs) == 0 {
@@ -927,6 +932,6 @@ func (e coalesceExpr) ToSql() (sql string, args []any, err error) {
 	}
 
 	sql = fmt.Sprintf("COALESCE(%s, ?)", strings.Join(exprs, ", "))
-	args = append(args, e.null)
+	args = append(allArgs, e.null)
 	return
 }
