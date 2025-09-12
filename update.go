@@ -27,7 +27,7 @@ type setClause struct {
 	value  any
 }
 
-func (d *updateData) ToSql() (sqlStr string, args []any, err error) {
+func (d *updateData) toSqlRaw() (sqlStr string, args []any, err error) {
 	if len(d.Table) == 0 {
 		err = fmt.Errorf("update statements must specify a table")
 		return "", nil, err
@@ -60,7 +60,7 @@ func (d *updateData) ToSql() (sqlStr string, args []any, err error) {
 				vsql  string
 				vargs []any
 			)
-			vsql, vargs, err = vs.ToSql()
+			vsql, vargs, err = nestedToSql(vs)
 			if err != nil {
 				return "", nil, err
 			}
@@ -117,8 +117,16 @@ func (d *updateData) ToSql() (sqlStr string, args []any, err error) {
 		}
 	}
 
-	sqlStr, err = d.PlaceholderFormat.ReplacePlaceholders(sql.String())
-	return sqlStr, args, err
+	return sql.String(), args, nil
+}
+
+func (d *updateData) ToSql() (sqlStr string, args []any, err error) {
+	s, a, e := d.toSqlRaw()
+	if e != nil {
+		return "", nil, e
+	}
+	sqlStr, err = d.PlaceholderFormat.ReplacePlaceholders(s)
+	return sqlStr, a, err
 }
 
 // Builder
@@ -200,8 +208,6 @@ func (b UpdateBuilder) From(from string) UpdateBuilder {
 
 // FromSelect sets a subquery into the FROM clause of the query.
 func (b UpdateBuilder) FromSelect(from SelectBuilder, alias string) UpdateBuilder {
-	// Prevent misnumbered parameters in nested selects (#183).
-	from = from.PlaceholderFormat(Question)
 	return builder.Set(b, "From", Alias(from, alias)).(UpdateBuilder)
 }
 
@@ -230,6 +236,12 @@ func (b UpdateBuilder) Offset(offset uint64) UpdateBuilder {
 // Suffix adds an expression to the end of the query
 func (b UpdateBuilder) Suffix(sql string, args ...any) UpdateBuilder {
 	return b.SuffixExpr(Expr(sql, args...))
+}
+
+// toSqlRaw builds SQL with raw placeholders ("?") without applying PlaceholderFormat.
+func (b UpdateBuilder) toSqlRaw() (string, []any, error) {
+	data := builder.GetStruct(b).(updateData)
+	return data.toSqlRaw()
 }
 
 // SuffixExpr adds an expression to the end of the query

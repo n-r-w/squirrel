@@ -151,3 +151,59 @@ func TestCTEPlaceholderFormat(t *testing.T) {
 	expectedSql = "WITH table1 AS (SELECT col1, col2 FROM table1 WHERE col1 = $1) UPDATE table2 SET col3 = $2"
 	assert.Equal(t, expectedSql, sql)
 }
+
+func TestCTEWithNestedSelects_DollarPlaceholderFormat(t *testing.T) {
+	b := StatementBuilder.PlaceholderFormat(Dollar)
+
+	sub := b.Select("col1", "col2").
+		From("table1").
+		Where("col1 = ?", 1)
+
+	sub = sub.Where("col2 = ?", "123")
+
+	q := b.With("table1").
+		As(sub).
+		Cte("table2").
+		As(
+			b.Select("col3", "col4").
+				From("table2").
+				Where("col3 = ?", "345").
+				Where("col4 = ?", 2),
+		).
+		Select(
+			b.Select("col1", "col2", "col3", "col4").
+				From("table1").
+				Where("col1 = ?", 3).
+				Join("table2 ON col3 = col4"),
+		)
+
+	sql, args, err := q.ToSql()
+	assert.NoError(t, err)
+
+	expectedSQL := "" +
+		"WITH table1 AS (SELECT col1, col2 FROM table1 WHERE col1 = $1 AND col2 = $2), " +
+		"table2 AS (SELECT col3, col4 FROM table2 WHERE col3 = $3 AND col4 = $4) " +
+		"SELECT col1, col2, col3, col4 FROM table1 JOIN table2 ON col3 = col4 WHERE col1 = $5"
+
+	assert.Equal(t, expectedSQL, sql)
+	assert.Equal(t, []any{1, "123", "345", 2, 3}, args)
+}
+
+func TestCTEFinalUpdate_DollarPlaceholderNumberingConflict(t *testing.T) {
+	b := StatementBuilder.PlaceholderFormat(Dollar)
+
+	q := b.With("w1").
+		As(
+			b.Select("c").From("t1").Where("a = ?", 1),
+		).
+		Update(
+			b.Update("t2").Set("x", 2).Where("y = ?", 3),
+		)
+
+	sql, args, err := q.ToSql()
+	assert.NoError(t, err)
+
+	expectedSQL := "WITH w1 AS (SELECT c FROM t1 WHERE a = $1) UPDATE t2 SET x = $2 WHERE y = $3"
+	assert.Equal(t, expectedSQL, sql)
+	assert.Equal(t, []any{1, 2, 3}, args)
+}
