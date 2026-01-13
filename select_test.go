@@ -10,6 +10,7 @@ import (
 )
 
 func TestSelectBuilderToSql(t *testing.T) {
+	t.Parallel()
 	subQ := Select("aa", "bb").From("dd")
 	b := Select("a", "b").
 		Prefix("WITH prefix AS ?", 0).
@@ -58,6 +59,7 @@ func TestSelectBuilderToSql(t *testing.T) {
 }
 
 func TestSelectBuilderFromSelect(t *testing.T) {
+	t.Parallel()
 	subQ := Select("c").From("d").Where(Eq{"i": 0})
 	b := Select("a", "b").FromSelect(subQ, "subq")
 	sql, args, err := b.ToSql()
@@ -71,6 +73,7 @@ func TestSelectBuilderFromSelect(t *testing.T) {
 }
 
 func TestSelectBuilderFromSelectNestedDollarPlaceholders(t *testing.T) {
+	t.Parallel()
 	subQ := Select("c").
 		From("t").
 		Where(Gt{"c": 1}).
@@ -90,11 +93,13 @@ func TestSelectBuilderFromSelectNestedDollarPlaceholders(t *testing.T) {
 }
 
 func TestSelectBuilderToSqlErr(t *testing.T) {
+	t.Parallel()
 	_, _, err := Select().From("x").ToSql()
 	assert.Error(t, err)
 }
 
 func TestSelectBuilderPlaceholders(t *testing.T) {
+	t.Parallel()
 	b := Select("test").Where("x = ? AND y = ?")
 
 	sql, _, _ := b.PlaceholderFormat(Question).ToSql()
@@ -111,6 +116,7 @@ func TestSelectBuilderPlaceholders(t *testing.T) {
 }
 
 func TestSelectBuilderSimpleJoin(t *testing.T) {
+	t.Parallel()
 	expectedSql := "SELECT * FROM bar JOIN baz ON bar.foo = baz.foo"
 	expectedArgs := []any(nil)
 
@@ -124,6 +130,7 @@ func TestSelectBuilderSimpleJoin(t *testing.T) {
 }
 
 func TestSelectBuilderParamJoin(t *testing.T) {
+	t.Parallel()
 	expectedSql := "SELECT * FROM bar JOIN baz ON bar.foo = baz.foo AND baz.foo = ?"
 	expectedArgs := []any{42}
 
@@ -137,6 +144,7 @@ func TestSelectBuilderParamJoin(t *testing.T) {
 }
 
 func TestSelectBuilderNestedSelectJoin(t *testing.T) {
+	t.Parallel()
 	expectedSql := "SELECT * FROM bar JOIN ( SELECT * FROM baz WHERE foo = ? ) r ON bar.foo = r.foo"
 	expectedArgs := []any{42}
 
@@ -152,6 +160,7 @@ func TestSelectBuilderNestedSelectJoin(t *testing.T) {
 }
 
 func TestSelectWithOptions(t *testing.T) {
+	t.Parallel()
 	sql, _, err := Select("*").From("foo").Distinct().Options("SQL_NO_CACHE").ToSql()
 
 	assert.NoError(t, err)
@@ -159,6 +168,7 @@ func TestSelectWithOptions(t *testing.T) {
 }
 
 func TestSelectWithRemoveLimit(t *testing.T) {
+	t.Parallel()
 	sql, _, err := Select("*").From("foo").Limit(10).RemoveLimit().ToSql()
 
 	assert.NoError(t, err)
@@ -166,6 +176,7 @@ func TestSelectWithRemoveLimit(t *testing.T) {
 }
 
 func TestSelectWithRemoveOffset(t *testing.T) {
+	t.Parallel()
 	sql, _, err := Select("*").From("foo").Offset(10).RemoveOffset().ToSql()
 
 	assert.NoError(t, err)
@@ -173,6 +184,7 @@ func TestSelectWithRemoveOffset(t *testing.T) {
 }
 
 func TestSelectBuilderNestedSelectDollar(t *testing.T) {
+	t.Parallel()
 	nestedBuilder := StatementBuilder.PlaceholderFormat(Dollar).Select("*").Prefix("NOT EXISTS (").
 		From("bar").Where("y = ?", 42).Suffix(")")
 	outerSql, _, err := StatementBuilder.PlaceholderFormat(Dollar).Select("*").
@@ -183,6 +195,7 @@ func TestSelectBuilderNestedSelectDollar(t *testing.T) {
 }
 
 func TestSelectBuilderMustSql(t *testing.T) {
+	t.Parallel()
 	defer func() {
 		if r := recover(); r == nil {
 			t.Errorf("TestSelectBuilderMustSql should have panicked!")
@@ -193,24 +206,28 @@ func TestSelectBuilderMustSql(t *testing.T) {
 }
 
 func TestSelectWithoutWhereClause(t *testing.T) {
+	t.Parallel()
 	sql, _, err := Select("*").From("users").ToSql()
 	assert.NoError(t, err)
 	assert.Equal(t, "SELECT * FROM users", sql)
 }
 
 func TestSelectWithNilWhereClause(t *testing.T) {
+	t.Parallel()
 	sql, _, err := Select("*").From("users").Where(nil).ToSql()
 	assert.NoError(t, err)
 	assert.Equal(t, "SELECT * FROM users", sql)
 }
 
 func TestSelectWithEmptyStringWhereClause(t *testing.T) {
+	t.Parallel()
 	sql, _, err := Select("*").From("users").Where("").ToSql()
 	assert.NoError(t, err)
 	assert.Equal(t, "SELECT * FROM users", sql)
 }
 
 func TestSelectSubqueryPlaceholderNumbering(t *testing.T) {
+	t.Parallel()
 	subquery := Select("a").Where("b = ?", 1).PlaceholderFormat(Dollar)
 	with := subquery.Prefix("WITH a AS (").Suffix(")")
 
@@ -228,6 +245,7 @@ func TestSelectSubqueryPlaceholderNumbering(t *testing.T) {
 }
 
 func TestSelectSubqueryInConjunctionPlaceholderNumbering(t *testing.T) {
+	t.Parallel()
 	subquery := Select("a").Where(Eq{"b": 1}).Prefix("EXISTS(").Suffix(")").PlaceholderFormat(Dollar)
 
 	sql, args, err := Select("*").
@@ -243,6 +261,7 @@ func TestSelectSubqueryInConjunctionPlaceholderNumbering(t *testing.T) {
 }
 
 func TestSelectSubqueryInSelect(t *testing.T) {
+	t.Parallel()
 	sqlCheckSubQ := Select("gt.entity_task_id ").
 		From("scanner_tasks st ").
 		Join("global_tasks gt ON gt.id = st.global_task_id").
@@ -286,6 +305,7 @@ func simplifyString(s string) string {
 }
 
 func TestSelectJoinClausePlaceholderNumbering(t *testing.T) {
+	t.Parallel()
 	subquery := Select("a").Where(Eq{"b": 2}).PlaceholderFormat(Dollar)
 
 	sql, args, err := Select("t1.a").
@@ -384,6 +404,7 @@ func ExampleSelectBuilder_Columns_order() {
 }
 
 func TestRemoveColumns(t *testing.T) {
+	t.Parallel()
 	query := Select("id").
 		From("users").
 		RemoveColumns()
@@ -394,6 +415,7 @@ func TestRemoveColumns(t *testing.T) {
 }
 
 func TestOrderByCond(t *testing.T) {
+	t.Parallel()
 	columns := map[int]string{
 		1: "id",
 		2: "created",
@@ -425,6 +447,7 @@ func TestOrderByCond(t *testing.T) {
 }
 
 func TestSearch(t *testing.T) {
+	t.Parallel()
 	sql, args, err := Select("id", "name").
 		From("users").
 		Search("John", "name", "email").ToSql()
@@ -441,6 +464,7 @@ func TestSearch(t *testing.T) {
 }
 
 func TestPaginateByID(t *testing.T) {
+	t.Parallel()
 	sql, args, err := Select("id", "name").
 		From("users").
 		PaginateByID(10, 20, "id").
@@ -452,6 +476,7 @@ func TestPaginateByID(t *testing.T) {
 }
 
 func TestPaginateByPage(t *testing.T) {
+	t.Parallel()
 	sql, args, err := Select("id", "name").
 		From("users").
 		PaginateByPage(10, 1).
@@ -472,6 +497,7 @@ func TestPaginateByPage(t *testing.T) {
 }
 
 func TestPaginate(t *testing.T) {
+	t.Parallel()
 	pByID := PaginatorByID(10, 20)
 	assert.Equal(t, pByID.Limit(), uint64(10))
 	assert.Equal(t, pByID.LastID(), int64(20))
@@ -510,6 +536,7 @@ func TestPaginate(t *testing.T) {
 }
 
 func TestTableAlias(t *testing.T) {
+	t.Parallel()
 	sql, _, err := Select().
 		Alias("u").Columns("id", "name").
 		From("users u").
@@ -530,6 +557,7 @@ func TestTableAlias(t *testing.T) {
 }
 
 func TestSelectWith(t *testing.T) {
+	t.Parallel()
 	q := Select().
 		With("table1", Select("a").From("table2")).
 		Columns("a").

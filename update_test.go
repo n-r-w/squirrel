@@ -7,6 +7,7 @@ import (
 )
 
 func TestUpdateBuilderToSql(t *testing.T) {
+	t.Parallel()
 	b := Update("").
 		Prefix("WITH prefix AS ?", 0).
 		Table("a").
@@ -39,6 +40,7 @@ func TestUpdateBuilderToSql(t *testing.T) {
 }
 
 func TestUpdateBuilderToSqlErr(t *testing.T) {
+	t.Parallel()
 	_, _, err := Update("").Set("x", 1).ToSql()
 	assert.Error(t, err)
 
@@ -47,6 +49,7 @@ func TestUpdateBuilderToSqlErr(t *testing.T) {
 }
 
 func TestUpdateBuilderMustSql(t *testing.T) {
+	t.Parallel()
 	defer func() {
 		if r := recover(); r == nil {
 			t.Errorf("TestUpdateBuilderMustSql should have panicked!")
@@ -56,6 +59,7 @@ func TestUpdateBuilderMustSql(t *testing.T) {
 }
 
 func TestUpdateBuilderPlaceholders(t *testing.T) {
+	t.Parallel()
 	b := Update("test").SetMap(Eq{"x": 1, "y": 2})
 
 	sql, _, _ := b.PlaceholderFormat(Question).ToSql()
@@ -66,12 +70,14 @@ func TestUpdateBuilderPlaceholders(t *testing.T) {
 }
 
 func TestUpdateBuilderFrom(t *testing.T) {
+	t.Parallel()
 	sql, _, err := Update("employees").Set("sales_count", 100).From("accounts").Where("accounts.name = ?", "ACME").ToSql()
 	assert.NoError(t, err)
 	assert.Equal(t, "UPDATE employees SET sales_count = ? FROM accounts WHERE accounts.name = ?", sql)
 }
 
 func TestUpdateBuilderFromSelect(t *testing.T) {
+	t.Parallel()
 	sql, _, err := Update("employees").
 		Set("sales_count", 100).
 		FromSelect(Select("id").
@@ -88,6 +94,7 @@ func TestUpdateBuilderFromSelect(t *testing.T) {
 }
 
 func TestUpdateSetWithNestedSelect_DollarPlaceholderNumberingConflict(t *testing.T) {
+	t.Parallel()
 	b := StatementBuilder.PlaceholderFormat(Dollar)
 
 	sub := b.Select("max(val)").From("t2").Where("id = ?", 11)

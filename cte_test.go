@@ -7,6 +7,7 @@ import (
 )
 
 func TestWithAsQuery_OneSubquery(t *testing.T) {
+	t.Parallel()
 	w := With("lab").As(
 		Select("col").From("tab").
 			Where("simple AND NOT hard"),
@@ -38,6 +39,7 @@ func TestWithAsQuery_OneSubquery(t *testing.T) {
 }
 
 func TestWithAsQuery_TwoSubqueries(t *testing.T) {
+	t.Parallel()
 	w := With("lab_1").As(
 		Select("col_1", "col_common").From("tab_1").
 			Where("simple").
@@ -60,6 +62,7 @@ func TestWithAsQuery_TwoSubqueries(t *testing.T) {
 }
 
 func TestWithAsQuery_ManySubqueries(t *testing.T) {
+	t.Parallel()
 	w := With("lab_1").As(
 		Select("col_1", "col_common").From("tab_1").
 			Where("simple").
@@ -93,6 +96,7 @@ func TestWithAsQuery_ManySubqueries(t *testing.T) {
 }
 
 func TestWithAsQuery_Insert(t *testing.T) {
+	t.Parallel()
 	w := With("lab").As(
 		Select("col").From("tab").
 			Where("simple").
@@ -109,6 +113,7 @@ func TestWithAsQuery_Insert(t *testing.T) {
 }
 
 func TestWithAsQuery_Update(t *testing.T) {
+	t.Parallel()
 	w := With("lab").As(
 		Select("col", "common_col").From("tab").
 			Where("simple").
@@ -131,6 +136,7 @@ func TestWithAsQuery_Update(t *testing.T) {
 }
 
 func TestCTEPlaceholderFormat(t *testing.T) {
+	t.Parallel()
 	q := With("table1").As(
 		Select("col1", "col2").
 			From("table1").
@@ -153,6 +159,7 @@ func TestCTEPlaceholderFormat(t *testing.T) {
 }
 
 func TestCTEWithNestedSelects_DollarPlaceholderFormat(t *testing.T) {
+	t.Parallel()
 	b := StatementBuilder.PlaceholderFormat(Dollar)
 
 	sub := b.Select("col1", "col2").
@@ -190,6 +197,7 @@ func TestCTEWithNestedSelects_DollarPlaceholderFormat(t *testing.T) {
 }
 
 func TestCTEFinalUpdate_DollarPlaceholderNumberingConflict(t *testing.T) {
+	t.Parallel()
 	b := StatementBuilder.PlaceholderFormat(Dollar)
 
 	q := b.With("w1").

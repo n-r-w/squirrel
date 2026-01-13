@@ -7,6 +7,7 @@ import (
 )
 
 func TestDeleteBuilderToSql(t *testing.T) {
+	t.Parallel()
 	b := Delete("").
 		Prefix("WITH prefix AS ?", 0).
 		From("a").
@@ -29,11 +30,13 @@ func TestDeleteBuilderToSql(t *testing.T) {
 }
 
 func TestDeleteBuilderToSqlErr(t *testing.T) {
+	t.Parallel()
 	_, _, err := Delete("").ToSql()
 	assert.Error(t, err)
 }
 
 func TestDeleteBuilderMustSql(t *testing.T) {
+	t.Parallel()
 	defer func() {
 		if r := recover(); r == nil {
 			t.Errorf("TestDeleteBuilderMustSql should have panicked!")
@@ -43,6 +46,7 @@ func TestDeleteBuilderMustSql(t *testing.T) {
 }
 
 func TestDeleteBuilderPlaceholders(t *testing.T) {
+	t.Parallel()
 	b := Delete("test").Where("x = ? AND y = ?", 1, 2)
 
 	sql, _, _ := b.PlaceholderFormat(Question).ToSql()

@@ -7,6 +7,7 @@ import (
 )
 
 func TestInsertBuilderToSql(t *testing.T) {
+	t.Parallel()
 	b := Insert("").
 		Prefix("WITH prefix AS ?", 0).
 		Into("a").
@@ -29,6 +30,7 @@ func TestInsertBuilderToSql(t *testing.T) {
 }
 
 func TestInsertBuilderToSqlErr(t *testing.T) {
+	t.Parallel()
 	_, _, err := Insert("").Values(1).ToSql()
 	assert.Error(t, err)
 
@@ -37,6 +39,7 @@ func TestInsertBuilderToSqlErr(t *testing.T) {
 }
 
 func TestInsertBuilderMustSql(t *testing.T) {
+	t.Parallel()
 	defer func() {
 		if r := recover(); r == nil {
 			t.Errorf("TestInsertBuilderMustSql should have panicked!")
@@ -46,6 +49,7 @@ func TestInsertBuilderMustSql(t *testing.T) {
 }
 
 func TestInsertBuilderPlaceholders(t *testing.T) {
+	t.Parallel()
 	b := Insert("test").Values(1, 2)
 
 	sql, _, _ := b.PlaceholderFormat(Question).ToSql()
@@ -56,6 +60,7 @@ func TestInsertBuilderPlaceholders(t *testing.T) {
 }
 
 func TestInsertBuilderSetMap(t *testing.T) {
+	t.Parallel()
 	b := Insert("table").SetMap(Eq{"field1": 1, "field2": 2, "field3": 3})
 
 	sql, args, err := b.ToSql()
@@ -69,6 +74,7 @@ func TestInsertBuilderSetMap(t *testing.T) {
 }
 
 func TestInsertBuilderSelect(t *testing.T) {
+	t.Parallel()
 	sb := Select("field1").From("table1").Where(Eq{"field1": 1})
 	ib := Insert("table2").Columns("field1").Select(sb)
 
@@ -83,6 +89,7 @@ func TestInsertBuilderSelect(t *testing.T) {
 }
 
 func TestInsertBuilderReplace(t *testing.T) {
+	t.Parallel()
 	b := Replace("table").Values(1)
 
 	expectedSQL := "REPLACE INTO table VALUES (?)"
@@ -94,6 +101,7 @@ func TestInsertBuilderReplace(t *testing.T) {
 }
 
 func TestInsertSelect_DollarPlaceholderNumberingConflict(t *testing.T) {
+	t.Parallel()
 	b := StatementBuilder.PlaceholderFormat(Dollar)
 
 	sub := b.Select("a").From("src").Where("x = ?", 1)
@@ -112,6 +120,7 @@ func TestInsertSelect_DollarPlaceholderNumberingConflict(t *testing.T) {
 }
 
 func TestInsertValuesNestedSelect_DollarPlaceholderNumberingConflict(t *testing.T) {
+	t.Parallel()
 	b := StatementBuilder.PlaceholderFormat(Dollar)
 
 	inner := b.Select("y").From("t2").Where("y = ?", 7)
