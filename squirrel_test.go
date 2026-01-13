@@ -1,28 +1,11 @@
 package squirrel
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
-
-type DBStub struct {
-	LastPrepareSql string
-	PrepareCount   int
-
-	LastExecSql  string
-	LastExecArgs []any
-
-	LastQuerySql  string
-	LastQueryArgs []any
-
-	LastQueryRowSql  string
-	LastQueryRowArgs []any
-}
-
-var StubError = fmt.Errorf("this is a stub; this is only a stub")
 
 var (
 	testDebugUpdateSQL    = Update("table").SetMap(Eq{"x": 1, "y": "val"})

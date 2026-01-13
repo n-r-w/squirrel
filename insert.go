@@ -24,7 +24,7 @@ type insertData struct {
 }
 
 func (d *insertData) toSqlRaw() (sqlStr string, args []any, err error) {
-	if len(d.Into) == 0 {
+	if d.Into == "" {
 		err = errors.New("insert statements must specify a table")
 		return "", nil, err
 	}
@@ -162,14 +162,14 @@ func (b InsertBuilder) PlaceholderFormat(f PlaceholderFormat) InsertBuilder {
 // SQL methods
 
 // ToSql builds the query into a SQL string and bound args.
-func (b InsertBuilder) ToSql() (string, []any, error) {
+func (b InsertBuilder) ToSql() (sql string, args []any, err error) {
 	data := builder.GetStruct(b).(insertData)
 	return data.ToSql()
 }
 
 // MustSql builds the query into a SQL string and bound args.
 // It panics if there are any errors.
-func (b InsertBuilder) MustSql() (string, []any) {
+func (b InsertBuilder) MustSql() (sql string, args []any) {
 	sql, args, err := b.ToSql()
 	if err != nil {
 		panic(err)
@@ -177,12 +177,12 @@ func (b InsertBuilder) MustSql() (string, []any) {
 	return sql, args
 }
 
-// Prefix adds an expression to the beginning of the query
+// Prefix adds an expression to the beginning of the query.
 func (b InsertBuilder) Prefix(sql string, args ...any) InsertBuilder {
 	return b.PrefixExpr(Expr(sql, args...))
 }
 
-// PrefixExpr adds an expression to the very beginning of the query
+// PrefixExpr adds an expression to the very beginning of the query.
 func (b InsertBuilder) PrefixExpr(e Sqlizer) InsertBuilder {
 	return builder.Append(b, "Prefixes", e).(InsertBuilder)
 }
@@ -207,18 +207,18 @@ func (b InsertBuilder) Values(values ...any) InsertBuilder {
 	return builder.Append(b, "Values", values).(InsertBuilder)
 }
 
-// Suffix adds an expression to the end of the query
+// Suffix adds an expression to the end of the query.
 func (b InsertBuilder) Suffix(sql string, args ...any) InsertBuilder {
 	return b.SuffixExpr(Expr(sql, args...))
 }
 
-// SuffixExpr adds an expression to the end of the query
+// SuffixExpr adds an expression to the end of the query.
 func (b InsertBuilder) SuffixExpr(e Sqlizer) InsertBuilder {
 	return builder.Append(b, "Suffixes", e).(InsertBuilder)
 }
 
-// SetMap set columns and values for insert builder from a map of column name and value
-// note that it will reset all previous columns and values was set if any
+// SetMap set columns and values for insert builder from a map of column name and value.
+// Note that it will reset all previous columns and values was set if any.
 func (b InsertBuilder) SetMap(clauses map[string]any) InsertBuilder {
 	// Keep the columns in a consistent order by sorting the column key string.
 
@@ -239,8 +239,8 @@ func (b InsertBuilder) SetMap(clauses map[string]any) InsertBuilder {
 	return b
 }
 
-// Select set Select clause for insert query
-// If Values and Select are used, then Select has higher priority
+// Select set Select clause for insert query.
+// If Values and Select are used, then Select has higher priority.
 func (b InsertBuilder) Select(sb SelectBuilder) InsertBuilder {
 	return builder.Set(b, "Select", &sb).(InsertBuilder)
 }
@@ -250,7 +250,7 @@ func (b InsertBuilder) statementKeyword(keyword string) InsertBuilder {
 }
 
 // toSqlRaw builds SQL with raw placeholders ("?") without applying PlaceholderFormat.
-func (b InsertBuilder) toSqlRaw() (string, []any, error) {
+func (b InsertBuilder) toSqlRaw() (sql string, args []any, err error) {
 	data := builder.GetStruct(b).(insertData)
 	return data.toSqlRaw()
 }

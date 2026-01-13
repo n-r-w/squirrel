@@ -26,9 +26,7 @@ func TestWithAsQuery_OneSubquery(t *testing.T) {
 		Select("col").From("tab").
 			Where("simple").
 			Where("NOT hard"),
-	).Select(Select("col").
-		From("lab"),
-		)
+	).Select(Select("col").From("lab"))
 	q, _, err = w.ToSql()
 	require.NoError(t, err)
 
@@ -78,8 +76,7 @@ func TestWithAsQuery_ManySubqueries(t *testing.T) {
 		Select("col_1", "col_2", "col_3", "col_4", "col_common").
 			From("lab_1").Join("lab_2 ON lab_1.col_common = lab_2.col_common").
 			Join("lab_3 ON lab_1.col_common = lab_3.col_common").
-			Join("lab_4 ON lab_1.col_common = lab_4.col_common"),
-		)
+			Join("lab_4 ON lab_1.col_common = lab_4.col_common"))
 	q, _, err := w.ToSql()
 	require.NoError(t, err)
 
@@ -122,8 +119,7 @@ func TestWithAsQuery_Update(t *testing.T) {
 	).Update(
 		Update("upd_tab, lab").
 			Set("upd_col", Expr("lab.col")).
-			Where("common_col = lab.common_col"),
-		)
+			Where("common_col = lab.common_col"))
 
 	q, _, err := w.ToSql()
 	require.NoError(t, err)

@@ -85,6 +85,8 @@ func Placeholders(count int) string {
 	return strings.Repeat(",?", count)[1:]
 }
 
+const escapedPlaceholder = "??"
+
 func replacePositionalPlaceholders(sql, prefix string) (string, error) {
 	buf := &bytes.Buffer{}
 	i := 0
@@ -94,7 +96,7 @@ func replacePositionalPlaceholders(sql, prefix string) (string, error) {
 			break
 		}
 
-		if len(sql[p:]) > 1 && sql[p:p+2] == "??" { // escape ?? => ?
+		if len(sql[p:]) > 1 && sql[p:p+2] == escapedPlaceholder { // escape ?? => ?
 			buf.WriteString(sql[:p])
 			buf.WriteString("?")
 			if len(sql[p:]) == 1 {

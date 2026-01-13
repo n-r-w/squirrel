@@ -2,8 +2,10 @@ package squirrel
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/lann/builder"
@@ -28,12 +30,12 @@ type setClause struct {
 }
 
 func (d *updateData) toSqlRaw() (sqlStr string, args []any, err error) {
-	if len(d.Table) == 0 {
-		err = fmt.Errorf("update statements must specify a table")
+	if d.Table == "" {
+		err = errors.New("update statements must specify a table")
 		return "", nil, err
 	}
 	if len(d.SetClauses) == 0 {
-		err = fmt.Errorf("update statements must have at least one Set clause")
+		err = errors.New("update statements must have at least one Set clause")
 		return "", nil, err
 	}
 
@@ -99,12 +101,12 @@ func (d *updateData) toSqlRaw() (sqlStr string, args []any, err error) {
 		_, _ = sql.WriteString(strings.Join(d.OrderBys, ", "))
 	}
 
-	if len(d.Limit) > 0 {
+	if d.Limit != "" {
 		_, _ = sql.WriteString(" LIMIT ")
 		_, _ = sql.WriteString(d.Limit)
 	}
 
-	if len(d.Offset) > 0 {
+	if d.Offset != "" {
 		_, _ = sql.WriteString(" OFFSET ")
 		_, _ = sql.WriteString(d.Offset)
 	}
@@ -149,14 +151,14 @@ func (b UpdateBuilder) PlaceholderFormat(f PlaceholderFormat) UpdateBuilder {
 // SQL methods
 
 // ToSql builds the query into a SQL string and bound args.
-func (b UpdateBuilder) ToSql() (string, []any, error) {
+func (b UpdateBuilder) ToSql() (sql string, args []any, err error) {
 	data := builder.GetStruct(b).(updateData)
 	return data.ToSql()
 }
 
 // MustSql builds the query into a SQL string and bound args.
 // It panics if there are any errors.
-func (b UpdateBuilder) MustSql() (string, []any) {
+func (b UpdateBuilder) MustSql() (sql string, args []any) {
 	sql, args, err := b.ToSql()
 	if err != nil {
 		panic(err)
@@ -164,12 +166,12 @@ func (b UpdateBuilder) MustSql() (string, []any) {
 	return sql, args
 }
 
-// Prefix adds an expression to the beginning of the query
+// Prefix adds an expression to the beginning of the query.
 func (b UpdateBuilder) Prefix(sql string, args ...any) UpdateBuilder {
 	return b.PrefixExpr(Expr(sql, args...))
 }
 
-// PrefixExpr adds an expression to the very beginning of the query
+// PrefixExpr adds an expression to the very beginning of the query.
 func (b UpdateBuilder) PrefixExpr(e Sqlizer) UpdateBuilder {
 	return builder.Append(b, "Prefixes", e).(UpdateBuilder)
 }
@@ -225,26 +227,26 @@ func (b UpdateBuilder) OrderBy(orderBys ...string) UpdateBuilder {
 
 // Limit sets a LIMIT clause on the query.
 func (b UpdateBuilder) Limit(limit uint64) UpdateBuilder {
-	return builder.Set(b, "Limit", fmt.Sprintf("%d", limit)).(UpdateBuilder)
+	return builder.Set(b, "Limit", strconv.FormatUint(limit, 10)).(UpdateBuilder)
 }
 
 // Offset sets a OFFSET clause on the query.
 func (b UpdateBuilder) Offset(offset uint64) UpdateBuilder {
-	return builder.Set(b, "Offset", fmt.Sprintf("%d", offset)).(UpdateBuilder)
+	return builder.Set(b, "Offset", strconv.FormatUint(offset, 10)).(UpdateBuilder)
 }
 
-// Suffix adds an expression to the end of the query
+// Suffix adds an expression to the end of the query.
 func (b UpdateBuilder) Suffix(sql string, args ...any) UpdateBuilder {
 	return b.SuffixExpr(Expr(sql, args...))
 }
 
 // toSqlRaw builds SQL with raw placeholders ("?") without applying PlaceholderFormat.
-func (b UpdateBuilder) toSqlRaw() (string, []any, error) {
+func (b UpdateBuilder) toSqlRaw() (sql string, args []any, err error) {
 	data := builder.GetStruct(b).(updateData)
 	return data.toSqlRaw()
 }
 
-// SuffixExpr adds an expression to the end of the query
+// SuffixExpr adds an expression to the end of the query.
 func (b UpdateBuilder) SuffixExpr(e Sqlizer) UpdateBuilder {
 	return builder.Append(b, "Suffixes", e).(UpdateBuilder)
 }

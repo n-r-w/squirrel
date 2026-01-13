@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -84,7 +83,7 @@ func TestSelectBuilderFromSelectNestedDollarPlaceholders(t *testing.T) {
 		Where(Lt{"c": 2}).
 		PlaceholderFormat(Dollar)
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "SELECT c FROM (SELECT c FROM t WHERE c > $1) AS subq WHERE c < $2"
 	assert.Equal(t, expectedSql, sql)
@@ -172,7 +171,7 @@ func TestSelectWithRemoveLimit(t *testing.T) {
 	t.Parallel()
 	sql, _, err := Select("*").From("foo").Limit(10).RemoveLimit().ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT * FROM foo", sql)
 }
 
@@ -300,7 +299,7 @@ func TestSelectSubqueryInSelect(t *testing.T) {
 	assert.Equal(t, []any{2, 3, 4, 1}, args)
 }
 
-// remove double spaces, tabs, and newlines
+// simplifyString removes double spaces, tabs, and newlines.
 func simplifyString(s string) string {
 	return strings.Join(strings.Fields(s), " ")
 }
@@ -315,7 +314,7 @@ func TestSelectJoinClausePlaceholderNumbering(t *testing.T) {
 		JoinClause(subquery.Prefix("JOIN (").Suffix(") t2 ON (t1.a = t2.a)")).
 		PlaceholderFormat(Dollar).
 		ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "SELECT t1.a FROM t1 JOIN ( SELECT a WHERE b = $1 ) t2 ON (t1.a = t2.a) WHERE a = $2"
 	assert.Equal(t, expectedSql, sql)
@@ -323,56 +322,44 @@ func TestSelectJoinClausePlaceholderNumbering(t *testing.T) {
 }
 
 func ExampleSelect() {
-	Select("id", "created", "first_name").From("users") // ... continue building up your query
-
-	// sql methods in select columns are ok
-	Select("first_name", "count(*)").From("users")
-
-	// column aliases are ok too
-	Select("first_name", "count(*) as n_users").From("users")
+	sql, _, _ := Select("id", "created", "first_name").From("users").ToSql()
+	fmt.Println(sql)
+	// Output: SELECT id, created, first_name FROM users
 }
 
 func ExampleSelectBuilder_From() {
-	Select("id", "created", "first_name").From("users") // ... continue building up your query
+	sql, _, _ := Select("id", "created", "first_name").From("users").ToSql()
+	fmt.Println(sql)
+	// Output: SELECT id, created, first_name FROM users
 }
 
 func ExampleSelectBuilder_Where() {
 	companyId := 20
-	Select("id", "created", "first_name").From("users").Where("company = ?", companyId)
+	sql, _, _ := Select("id", "created", "first_name").From("users").Where("company = ?", companyId).ToSql()
+	fmt.Println(sql)
+	// Output: SELECT id, created, first_name FROM users WHERE company = ?
 }
 
 func ExampleSelectBuilder_Where_helpers() {
 	companyId := 20
 
-	Select("id", "created", "first_name").From("users").Where(Eq{
+	sql, _, _ := Select("id", "created", "first_name").From("users").Where(Eq{
 		"company": companyId,
-	})
-
-	Select("id", "created", "first_name").From("users").Where(GtOrEq{
-		"created": time.Now().AddDate(0, 0, -7),
-	})
-
-	Select("id", "created", "first_name").From("users").Where(And{
-		GtOrEq{
-			"created": time.Now().AddDate(0, 0, -7),
-		},
-		Eq{
-			"company": companyId,
-		},
-	})
+	}).ToSql()
+	fmt.Println(sql)
+	// Output: SELECT id, created, first_name FROM users WHERE company = ?
 }
 
 func ExampleSelectBuilder_Where_multiple() {
 	companyId := 20
 
 	// multiple where's are ok
-
-	Select("id", "created", "first_name").
+	sql, _, _ := Select("id", "created", "first_name").
 		From("users").
 		Where("company = ?", companyId).
-		Where(GtOrEq{
-			"created": time.Now().AddDate(0, 0, -7),
-		})
+		Where(Eq{"active": true}).ToSql()
+	fmt.Println(sql)
+	// Output: SELECT id, created, first_name FROM users WHERE company = ? AND active = ?
 }
 
 func ExampleSelectBuilder_FromSelect() {
@@ -510,7 +497,7 @@ func TestPaginate(t *testing.T) {
 		OrderBy("id ASC").
 		SetIDColumn("id").
 		ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT id, name FROM users WHERE id > ? ORDER BY id ASC LIMIT 10", sql)
 	assert.Equal(t, []any{int64(20)}, args)
 
@@ -519,7 +506,7 @@ func TestPaginate(t *testing.T) {
 		Paginate(pByID).
 		OrderBy("id ASC").
 		ToSql()
-	assert.ErrorContains(t, err, "IDColumn is required for pagination by ID")
+	require.ErrorContains(t, err, "IDColumn is required for pagination by ID")
 
 	pByPage := PaginatorByPage(10, 2)
 	assert.Equal(t, uint64(10), pByPage.PageSize())
@@ -531,7 +518,7 @@ func TestPaginate(t *testing.T) {
 		OrderBy("id ASC").
 		ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT id, name FROM users ORDER BY id ASC LIMIT 10 OFFSET 10", sql)
 	assert.Empty(t, args)
 }

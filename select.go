@@ -2,7 +2,9 @@ package squirrel
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"golang.org/x/exp/slices"
@@ -37,9 +39,10 @@ type Paginator struct {
 // PaginatorByPage creates a new Paginator for pagination by page.
 func PaginatorByPage(pageSize, pageNum uint64) Paginator {
 	return Paginator{
-		limit: pageSize,
-		page:  pageNum,
-		pType: PaginatorTypeByPage,
+		limit:  pageSize,
+		page:   pageNum,
+		lastID: 0,
+		pType:  PaginatorTypeByPage,
 	}
 }
 
@@ -47,27 +50,28 @@ func PaginatorByPage(pageSize, pageNum uint64) Paginator {
 func PaginatorByID(limit uint64, lastID int64) Paginator {
 	return Paginator{
 		limit:  limit,
+		page:   0,
 		lastID: lastID,
 		pType:  PaginatorTypeByID,
 	}
 }
 
-// PageSize returns the page size for PaginatorTypeByPage
+// PageSize returns the page size for PaginatorTypeByPage.
 func (p Paginator) PageSize() uint64 {
 	return p.limit
 }
 
-// PageNumber returns the page number for PaginatorTypeByPage
+// PageNumber returns the page number for PaginatorTypeByPage.
 func (p Paginator) PageNumber() uint64 {
 	return p.page
 }
 
-// Limit returns the limit for PaginatorTypeByID
+// Limit returns the limit for PaginatorTypeByID.
 func (p Paginator) Limit() uint64 {
 	return p.limit
 }
 
-// LastID returns the last ID for PaginatorTypeByID
+// LastID returns the last ID for PaginatorTypeByID.
 func (p Paginator) LastID() int64 {
 	return p.lastID
 }
@@ -121,7 +125,7 @@ func (d *selectData) ToSql() (sqlStr string, args []any, err error) {
 
 func (d *selectData) toSqlRaw() (sqlStr string, args []any, err error) {
 	if len(d.Columns) == 0 {
-		err = fmt.Errorf("select statements must have at least one result column")
+		err = errors.New("select statements must have at least one result column")
 		return "", nil, err
 	}
 
@@ -166,12 +170,12 @@ func (d *selectData) toSqlRaw() (sqlStr string, args []any, err error) {
 		}
 	}
 
-	whereParts := make([]Sqlizer, len(d.WhereParts))
-	copy(whereParts, d.WhereParts)
+	whereParts := make([]Sqlizer, 0, len(d.WhereParts)+1)
+	whereParts = append(whereParts, d.WhereParts...)
 
 	if d.Paginator.pType == PaginatorTypeByID {
 		if d.IDColumn == "" {
-			return "", nil, fmt.Errorf("IDColumn is required for pagination by ID")
+			return "", nil, errors.New("IDColumn is required for pagination by ID")
 		}
 
 		whereParts = append(whereParts, Gt{d.IDColumn: d.Paginator.lastID})
@@ -206,18 +210,18 @@ func (d *selectData) toSqlRaw() (sqlStr string, args []any, err error) {
 		}
 	}
 
-	if len(d.Limit) > 0 {
+	if d.Limit != "" {
 		if d.Paginator.pType != PaginatorTypeUndefined {
-			return "", nil, fmt.Errorf("limit and paginator cannot be used together")
+			return "", nil, errors.New("limit and paginator cannot be used together")
 		}
 
 		_, _ = sql.WriteString(" LIMIT ")
 		_, _ = sql.WriteString(d.Limit)
 	}
 
-	if len(d.Offset) > 0 {
+	if d.Offset != "" {
 		if d.Paginator.pType != PaginatorTypeUndefined {
-			return "", nil, fmt.Errorf("offset and paginator cannot be used together")
+			return "", nil, errors.New("offset and paginator cannot be used together")
 		}
 
 		_, _ = sql.WriteString(" OFFSET ")
@@ -225,6 +229,8 @@ func (d *selectData) toSqlRaw() (sqlStr string, args []any, err error) {
 	}
 
 	switch d.Paginator.pType {
+	case PaginatorTypeUndefined:
+		// No pagination
 	case PaginatorTypeByPage:
 		_, _ = fmt.Fprintf(sql, " LIMIT %d", d.Paginator.limit)
 		if d.Paginator.page > 1 {
@@ -267,19 +273,19 @@ func (b SelectBuilder) PlaceholderFormat(f PlaceholderFormat) SelectBuilder {
 // SQL methods
 
 // ToSql builds the query into a SQL string and bound args.
-func (b SelectBuilder) ToSql() (string, []any, error) {
+func (b SelectBuilder) ToSql() (sql string, args []any, err error) {
 	data := builder.GetStruct(b).(selectData)
 	return data.ToSql()
 }
 
-func (b SelectBuilder) toSqlRaw() (string, []any, error) {
+func (b SelectBuilder) toSqlRaw() (sql string, args []any, err error) {
 	data := builder.GetStruct(b).(selectData)
 	return data.toSqlRaw()
 }
 
 // MustSql builds the query into a SQL string and bound args.
 // It panics if there are any errors.
-func (b SelectBuilder) MustSql() (string, []any) {
+func (b SelectBuilder) MustSql() (sql string, args []any) {
 	sql, args, err := b.ToSql()
 	if err != nil {
 		panic(err)
@@ -287,12 +293,12 @@ func (b SelectBuilder) MustSql() (string, []any) {
 	return sql, args
 }
 
-// Prefix adds an expression to the beginning of the query
+// Prefix adds an expression to the beginning of the query.
 func (b SelectBuilder) Prefix(sql string, args ...any) SelectBuilder {
 	return b.PrefixExpr(Expr(sql, args...))
 }
 
-// PrefixExpr adds an expression to the very beginning of the query
+// PrefixExpr adds an expression to the very beginning of the query.
 func (b SelectBuilder) PrefixExpr(e Sqlizer) SelectBuilder {
 	return builder.Append(b, "Prefixes", e).(SelectBuilder)
 }
@@ -302,7 +308,7 @@ func (b SelectBuilder) Distinct() SelectBuilder {
 	return b.Options("DISTINCT")
 }
 
-// Options adds select option to the query
+// Options adds select option to the query.
 func (b SelectBuilder) Options(options ...string) SelectBuilder {
 	return builder.Extend(b, "Options", options).(SelectBuilder)
 }
@@ -509,7 +515,7 @@ func (b SelectBuilder) PaginateByID(limit uint64, startID int64, columnID string
 
 // PaginateByPage adds a LIMIT and OFFSET condition to the query.
 // WARNING: query must be ordered to avoid unexpected results!
-func (b SelectBuilder) PaginateByPage(limit uint64, page uint64) SelectBuilder {
+func (b SelectBuilder) PaginateByPage(limit, page uint64) SelectBuilder {
 	sb := b.Limit(limit)
 	if page > 1 {
 		sb = sb.Offset(limit * (page - 1))
@@ -531,17 +537,17 @@ func (b SelectBuilder) SetIDColumn(column string) SelectBuilder {
 
 // Limit sets a LIMIT clause on the query.
 func (b SelectBuilder) Limit(limit uint64) SelectBuilder {
-	return builder.Set(b, "Limit", fmt.Sprintf("%d", limit)).(SelectBuilder)
+	return builder.Set(b, "Limit", strconv.FormatUint(limit, 10)).(SelectBuilder)
 }
 
-// RemoveLimit Limit ALL allows to access all records with limit
+// RemoveLimit removes LIMIT clause allowing access to all records.
 func (b SelectBuilder) RemoveLimit() SelectBuilder {
 	return builder.Delete(b, "Limit").(SelectBuilder)
 }
 
 // Offset sets a OFFSET clause on the query.
 func (b SelectBuilder) Offset(offset uint64) SelectBuilder {
-	return builder.Set(b, "Offset", fmt.Sprintf("%d", offset)).(SelectBuilder)
+	return builder.Set(b, "Offset", strconv.FormatUint(offset, 10)).(SelectBuilder)
 }
 
 // RemoveOffset removes OFFSET clause.
@@ -549,12 +555,12 @@ func (b SelectBuilder) RemoveOffset() SelectBuilder {
 	return builder.Delete(b, "Offset").(SelectBuilder)
 }
 
-// Suffix adds an expression to the end of the query
+// Suffix adds an expression to the end of the query.
 func (b SelectBuilder) Suffix(sql string, args ...any) SelectBuilder {
 	return b.SuffixExpr(Expr(sql, args...))
 }
 
-// SuffixExpr adds an expression to the end of the query
+// SuffixExpr adds an expression to the end of the query.
 func (b SelectBuilder) SuffixExpr(e Sqlizer) SelectBuilder {
 	return builder.Append(b, "Suffixes", e).(SelectBuilder)
 }

@@ -283,7 +283,7 @@ func TestNilPointer(t *testing.T) {
 
 	neq = NotEq{"id": ida}
 	sql, args, err = neq.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, args)
 	assert.Equal(t, "id IS NOT NULL", sql)
 }
@@ -330,7 +330,7 @@ func TestNotNilPointer(t *testing.T) {
 
 	neq = NotEq{"id": ida}
 	sql, args, err = neq.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []any{1, 2, 3}, args)
 	assert.Equal(t, "id NOT IN (?,?,?)", sql)
 }
@@ -402,7 +402,7 @@ func TestNotILikeToSql(t *testing.T) {
 	t.Parallel()
 	b := NotILike{"name": "sq%"}
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "name NOT ILIKE ?"
 	assert.Equal(t, expectedSql, sql)
@@ -715,17 +715,17 @@ func TestIn(t *testing.T) {
 func Test_Range(t *testing.T) {
 	t.Parallel()
 	sql, args, err := Range("id", 1, 10).ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "id BETWEEN ? AND ?", sql)
 	assert.Equal(t, []any{1, 10}, args)
 
 	sql, args, err = Range("id", 1, nil).ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "id >= ?", sql)
 	assert.Equal(t, []any{1}, args)
 
 	sql, args, err = Range("id", nil, 10).ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "id <= ?", sql)
 	assert.Equal(t, []any{10}, args)
 
@@ -751,9 +751,11 @@ func Test_EqNotEmpty(t *testing.T) {
 }
 
 func ExampleEq() {
-	Select("id", "created", "first_name").From("users").Where(Eq{
+	sql, _, _ := Select("id", "created", "first_name").From("users").Where(Eq{
 		"company": 20,
-	})
+	}).ToSql()
+	fmt.Println(sql)
+	// Output: SELECT id, created, first_name FROM users WHERE company = ?
 }
 
 func TestNotExprToSql(t *testing.T) {
@@ -862,14 +864,14 @@ func TestAggrNestedSelect_DollarPlaceholderNumbering(t *testing.T) {
 	// MAX
 	q = sb.Select("id").Column(Max(inner)).From("t").Where("b = ?", 22)
 	sql, args, err = q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT id, MAX(SELECT x FROM a WHERE a.c = $1) FROM t WHERE b = $2", sql)
 	assert.Equal(t, []any{11, 22}, args)
 
 	// AVG
 	q = sb.Select("id").Column(Avg(inner)).From("t").Where("b = ?", 22)
 	sql, args, err = q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT id, AVG(SELECT x FROM a WHERE a.c = $1) FROM t WHERE b = $2", sql)
 	assert.Equal(t, []any{11, 22}, args)
 }
@@ -917,7 +919,7 @@ func TestComparisonsNestedSelect_DollarPlaceholderNumbering(t *testing.T) {
 	// <=
 	q = sb.Select("1").From("t1").Where(LessOrEqual(inner, 5)).Where("x = ?", 9)
 	sql, args, err = q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT 1 FROM t1 WHERE (SELECT v FROM t2 WHERE w = $1) <= $2 AND x = $3", sql)
 	assert.Equal(t, []any{7, 5, 9}, args)
 }

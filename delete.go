@@ -2,7 +2,8 @@ package squirrel
 
 import (
 	"bytes"
-	"fmt"
+	"errors"
+	"strconv"
 	"strings"
 
 	"github.com/lann/builder"
@@ -20,8 +21,8 @@ type deleteData struct {
 }
 
 func (d *deleteData) toSqlRaw() (sqlStr string, args []any, err error) {
-	if len(d.From) == 0 {
-		err = fmt.Errorf("delete statements must specify a From table")
+	if d.From == "" {
+		err = errors.New("delete statements must specify a From table")
 		return "", nil, err
 	}
 
@@ -52,12 +53,12 @@ func (d *deleteData) toSqlRaw() (sqlStr string, args []any, err error) {
 		_, _ = sql.WriteString(strings.Join(d.OrderBys, ", "))
 	}
 
-	if len(d.Limit) > 0 {
+	if d.Limit != "" {
 		_, _ = sql.WriteString(" LIMIT ")
 		_, _ = sql.WriteString(d.Limit)
 	}
 
-	if len(d.Offset) > 0 {
+	if d.Offset != "" {
 		_, _ = sql.WriteString(" OFFSET ")
 		_, _ = sql.WriteString(d.Offset)
 	}
@@ -102,14 +103,14 @@ func (b DeleteBuilder) PlaceholderFormat(f PlaceholderFormat) DeleteBuilder {
 // SQL methods
 
 // ToSql builds the query into a SQL string and bound args.
-func (b DeleteBuilder) ToSql() (string, []any, error) {
+func (b DeleteBuilder) ToSql() (sql string, args []any, err error) {
 	data := builder.GetStruct(b).(deleteData)
 	return data.ToSql()
 }
 
 // MustSql builds the query into a SQL string and bound args.
 // It panics if there are any errors.
-func (b DeleteBuilder) MustSql() (string, []any) {
+func (b DeleteBuilder) MustSql() (sql string, args []any) {
 	sql, args, err := b.ToSql()
 	if err != nil {
 		panic(err)
@@ -117,12 +118,12 @@ func (b DeleteBuilder) MustSql() (string, []any) {
 	return sql, args
 }
 
-// Prefix adds an expression to the beginning of the query
+// Prefix adds an expression to the beginning of the query.
 func (b DeleteBuilder) Prefix(sql string, args ...any) DeleteBuilder {
 	return b.PrefixExpr(Expr(sql, args...))
 }
 
-// PrefixExpr adds an expression to the very beginning of the query
+// PrefixExpr adds an expression to the very beginning of the query.
 func (b DeleteBuilder) PrefixExpr(e Sqlizer) DeleteBuilder {
 	return builder.Append(b, "Prefixes", e).(DeleteBuilder)
 }
@@ -146,26 +147,26 @@ func (b DeleteBuilder) OrderBy(orderBys ...string) DeleteBuilder {
 
 // Limit sets a LIMIT clause on the query.
 func (b DeleteBuilder) Limit(limit uint64) DeleteBuilder {
-	return builder.Set(b, "Limit", fmt.Sprintf("%d", limit)).(DeleteBuilder)
+	return builder.Set(b, "Limit", strconv.FormatUint(limit, 10)).(DeleteBuilder)
 }
 
 // Offset sets a OFFSET clause on the query.
 func (b DeleteBuilder) Offset(offset uint64) DeleteBuilder {
-	return builder.Set(b, "Offset", fmt.Sprintf("%d", offset)).(DeleteBuilder)
+	return builder.Set(b, "Offset", strconv.FormatUint(offset, 10)).(DeleteBuilder)
 }
 
 // toSqlRaw builds SQL with raw placeholders ("?") without applying PlaceholderFormat.
-func (b DeleteBuilder) toSqlRaw() (string, []any, error) {
+func (b DeleteBuilder) toSqlRaw() (sql string, args []any, err error) {
 	data := builder.GetStruct(b).(deleteData)
 	return data.toSqlRaw()
 }
 
-// Suffix adds an expression to the end of the query
+// Suffix adds an expression to the end of the query.
 func (b DeleteBuilder) Suffix(sql string, args ...any) DeleteBuilder {
 	return b.SuffixExpr(Expr(sql, args...))
 }
 
-// SuffixExpr adds an expression to the end of the query
+// SuffixExpr adds an expression to the end of the query.
 func (b DeleteBuilder) SuffixExpr(e Sqlizer) DeleteBuilder {
 	return builder.Append(b, "Suffixes", e).(DeleteBuilder)
 }

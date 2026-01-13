@@ -3,6 +3,7 @@ package squirrel
 import (
 	"bytes"
 	"database/sql/driver"
+	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -50,7 +51,7 @@ func (e expr) ToSql() (sql string, args []any, err error) {
 	var isql string
 	var iargs []any
 
-	for err == nil && len(ap) > 0 && len(sp) > 0 {
+	for err == nil && len(ap) > 0 && sp != "" {
 		i := strings.Index(sp, "?")
 		if i < 0 {
 			// no more placeholders
@@ -116,7 +117,7 @@ func ConcatExpr(parts ...any) concatExpr {
 	return concatExpr(parts)
 }
 
-// aliasExpr helps to alias part of SQL query generated with underlying "expr"
+// aliasExpr helps to alias part of SQL query generated with underlying "expr".
 type aliasExpr struct {
 	expr  Sqlizer
 	alias string
@@ -169,8 +170,7 @@ func (eq Eq) toSQL(useNotOpr bool) (sql string, args []any, err error) {
 		var expr1 string
 		val := eq[key]
 
-		switch v := val.(type) {
-		case driver.Valuer:
+		if v, ok := val.(driver.Valuer); ok {
 			if val, err = v.Value(); err != nil {
 				return "", nil, err
 			}
@@ -248,19 +248,18 @@ func (lk Like) toSql(opr string) (sql string, args []any, err error) {
 	for key, val := range lk {
 		var expr1 string
 
-		switch v := val.(type) {
-		case driver.Valuer:
+		if v, ok := val.(driver.Valuer); ok {
 			if val, err = v.Value(); err != nil {
 				return
 			}
 		}
 
 		if val == nil {
-			err = fmt.Errorf("cannot use null with like operators")
+			err = errors.New("cannot use null with like operators")
 			return
 		} else {
 			if isListType(val) {
-				err = fmt.Errorf("cannot use array or slice with like operators")
+				err = errors.New("cannot use array or slice with like operators")
 				return
 			} else {
 				expr1 = fmt.Sprintf("%s %s ?", key, opr)
@@ -332,19 +331,18 @@ func (lt Lt) toSql(opposite, orEq bool) (sql string, args []any, err error) {
 		var expr1 string
 		val := lt[key]
 
-		switch v := val.(type) {
-		case driver.Valuer:
+		if v, ok := val.(driver.Valuer); ok {
 			if val, err = v.Value(); err != nil {
 				return "", nil, err
 			}
 		}
 
 		if val == nil {
-			err = fmt.Errorf("cannot use null with less than or greater than operators")
+			err = errors.New("cannot use null with less than or greater than operators")
 			return "", nil, err
 		}
 		if isListType(val) {
-			err = fmt.Errorf("cannot use array or slice with less than or greater than operators")
+			err = errors.New("cannot use array or slice with less than or greater than operators")
 			return "", nil, err
 		}
 		expr1 = fmt.Sprintf("%s %s ?", key, opr)
@@ -413,17 +411,17 @@ func (c conj) join(sep, defaultExpr string) (sql string, args []any, err error) 
 	return
 }
 
-// And conjunction Sqlizers
+// And conjunction Sqlizers.
 type And conj
 
-func (a And) ToSql() (string, []any, error) {
+func (a And) ToSql() (sql string, args []any, err error) {
 	return conj(a).join(" AND ", sqlTrue)
 }
 
-// Or conjunction Sqlizers
+// Or conjunction Sqlizers.
 type Or conj
 
-func (o Or) ToSql() (string, []any, error) {
+func (o Or) ToSql() (sql string, args []any, err error) {
 	return conj(o).join(" OR ", sqlFalse)
 }
 
@@ -444,13 +442,13 @@ func isListType(val any) bool {
 	return valVal.Kind() == reflect.Array || valVal.Kind() == reflect.Slice
 }
 
-// sumExpr helps to use aggregate function SUM in SQL query
+// sumExpr helps to use aggregate function SUM in SQL query.
 type sumExpr struct {
 	expr Sqlizer
 }
 
-// Sum allows to use SUM function in SQL query
-// Ex: SelectBuilder.Select("id", Sum("amount"))
+// Sum allows to use SUM function in SQL query.
+// Ex: SelectBuilder.Select("id", Sum("amount")).
 func Sum(e Sqlizer) sumExpr {
 	return sumExpr{e}
 }
@@ -463,13 +461,13 @@ func (e sumExpr) ToSql() (sql string, args []any, err error) {
 	return
 }
 
-// countExpr helps to use aggregate function COUNT in SQL query
+// countExpr helps to use aggregate function COUNT in SQL query.
 type countExpr struct {
 	expr Sqlizer
 }
 
-// Count allows to use COUNT function in SQL query
-// Ex: SelectBuilder.Select("id", Count("amount"))
+// Count allows to use COUNT function in SQL query.
+// Ex: SelectBuilder.Select("id", Count("amount")).
 func Count(e Sqlizer) countExpr {
 	return countExpr{e}
 }
@@ -482,13 +480,13 @@ func (e countExpr) ToSql() (sql string, args []any, err error) {
 	return
 }
 
-// minExpr helps to use aggregate function MIN in SQL query
+// minExpr helps to use aggregate function MIN in SQL query.
 type minExpr struct {
 	expr Sqlizer
 }
 
-// Min allows to use MIN function in SQL query
-// Ex: SelectBuilder.Select("id", Min("amount"))
+// Min allows to use MIN function in SQL query.
+// Ex: SelectBuilder.Select("id", Min("amount")).
 func Min(e Sqlizer) minExpr {
 	return minExpr{e}
 }
@@ -501,13 +499,13 @@ func (e minExpr) ToSql() (sql string, args []any, err error) {
 	return
 }
 
-// maxExpr helps to use aggregate function MAX in SQL query
+// maxExpr helps to use aggregate function MAX in SQL query.
 type maxExpr struct {
 	expr Sqlizer
 }
 
-// Max allows to use MAX function in SQL query
-// Ex: SelectBuilder.Select("id", Max("amount"))
+// Max allows to use MAX function in SQL query.
+// Ex: SelectBuilder.Select("id", Max("amount")).
 func Max(e Sqlizer) maxExpr {
 	return maxExpr{e}
 }
@@ -520,13 +518,13 @@ func (e maxExpr) ToSql() (sql string, args []any, err error) {
 	return
 }
 
-// avgExpr helps to use aggregate function AVG in SQL query
+// avgExpr helps to use aggregate function AVG in SQL query.
 type avgExpr struct {
 	expr Sqlizer
 }
 
-// Avg allows to use AVG function in SQL query
-// Ex: SelectBuilder.Select("id", Avg("amount"))
+// Avg allows to use AVG function in SQL query.
+// Ex: SelectBuilder.Select("id", Avg("amount")).
 func Avg(e Sqlizer) avgExpr {
 	return avgExpr{e}
 }
@@ -539,13 +537,13 @@ func (e avgExpr) ToSql() (sql string, args []any, err error) {
 	return
 }
 
-// existsExpr helps to use EXISTS in SQL query
+// existsExpr helps to use EXISTS in SQL query.
 type existsExpr struct {
 	expr Sqlizer
 }
 
-// Exists allows to use EXISTS in SQL query
-// Ex: SelectBuilder.Where(Exists(Select("id").From("accounts").Where(Eq{"id": 1})))
+// Exists allows to use EXISTS in SQL query.
+// Ex: SelectBuilder.Where(Exists(Select("id").From("accounts").Where(Eq{"id": 1}))).
 func Exists(e Sqlizer) existsExpr {
 	return existsExpr{e}
 }
@@ -558,13 +556,13 @@ func (e existsExpr) ToSql() (sql string, args []any, err error) {
 	return
 }
 
-// notExistsExpr helps to use NOT EXISTS in SQL query
+// notExistsExpr helps to use NOT EXISTS in SQL query.
 type notExistsExpr struct {
 	expr Sqlizer
 }
 
-// NotExists allows to use NOT EXISTS in SQL query
-// Ex: SelectBuilder.Where(NotExists(Select("id").From("accounts").Where(Eq{"id": 1})))
+// NotExists allows to use NOT EXISTS in SQL query.
+// Ex: SelectBuilder.Where(NotExists(Select("id").From("accounts").Where(Eq{"id": 1}))).
 func NotExists(e Sqlizer) notExistsExpr {
 	return notExistsExpr{e}
 }
@@ -577,14 +575,14 @@ func (e notExistsExpr) ToSql() (sql string, args []any, err error) {
 	return
 }
 
-// equalExpr helps to use = in SQL query
+// equalExpr helps to use = in SQL query.
 type equalExpr struct {
 	expr  Sqlizer
 	value any
 }
 
-// Equal allows to use = in SQL query
-// Ex: SelectBuilder.Where(Equal(sq.Select(...), 1))
+// Equal allows to use = in SQL query.
+// Ex: SelectBuilder.Where(Equal(sq.Select(...), 1)).
 func Equal(e Sqlizer, v any) equalExpr {
 	return equalExpr{e, v}
 }
@@ -598,11 +596,11 @@ func (e equalExpr) ToSql() (sql string, args []any, err error) {
 	return
 }
 
-// notEqualExpr helps to use <> in SQL query
+// notEqualExpr helps to use <> in SQL query.
 type notEqualExpr equalExpr
 
-// NotEqual allows to use <> in SQL query
-// Ex: SelectBuilder.Where(NotEqual(sq.Select(...), 1))
+// NotEqual allows to use <> in SQL query.
+// Ex: SelectBuilder.Where(NotEqual(sq.Select(...), 1)).
 func NotEqual(e Sqlizer, v any) notEqualExpr {
 	return notEqualExpr{e, v}
 }
@@ -616,11 +614,11 @@ func (e notEqualExpr) ToSql() (sql string, args []any, err error) {
 	return
 }
 
-// greaterExpr helps to use > in SQL query
+// greaterExpr helps to use > in SQL query.
 type greaterExpr equalExpr
 
-// Greater allows to use > in SQL query
-// Ex: SelectBuilder.Where(Greater(sq.Select(...), 1))
+// Greater allows to use > in SQL query.
+// Ex: SelectBuilder.Where(Greater(sq.Select(...), 1)).
 func Greater(e Sqlizer, v any) greaterExpr {
 	return greaterExpr{e, v}
 }
@@ -634,11 +632,11 @@ func (e greaterExpr) ToSql() (sql string, args []any, err error) {
 	return
 }
 
-// greaterOrEqualExpr helps to use >= in SQL query
+// greaterOrEqualExpr helps to use >= in SQL query.
 type greaterOrEqualExpr equalExpr
 
-// GreaterOrEqual allows to use >= in SQL query
-// Ex: SelectBuilder.Where(GreaterOrEqual(sq.Select(...), 1))
+// GreaterOrEqual allows to use >= in SQL query.
+// Ex: SelectBuilder.Where(GreaterOrEqual(sq.Select(...), 1)).
 func GreaterOrEqual(e Sqlizer, v any) greaterOrEqualExpr {
 	return greaterOrEqualExpr{e, v}
 }
@@ -652,11 +650,11 @@ func (e greaterOrEqualExpr) ToSql() (sql string, args []any, err error) {
 	return
 }
 
-// lessExpr helps to use < in SQL query
+// lessExpr helps to use < in SQL query.
 type lessExpr equalExpr
 
-// Less allows to use < in SQL query
-// Ex: SelectBuilder.Where(Less(sq.Select(...), 1))
+// Less allows to use < in SQL query.
+// Ex: SelectBuilder.Where(Less(sq.Select(...), 1)).
 func Less(e Sqlizer, v any) lessExpr {
 	return lessExpr{e, v}
 }
@@ -670,11 +668,11 @@ func (e lessExpr) ToSql() (sql string, args []any, err error) {
 	return
 }
 
-// lessOrEqualExpr helps to use <= in SQL query
+// lessOrEqualExpr helps to use <= in SQL query.
 type lessOrEqualExpr equalExpr
 
-// LessOrEqual allows to use <= in SQL query
-// Ex: SelectBuilder.Where(LessOrEqual(sq.Select(...), 1))
+// LessOrEqual allows to use <= in SQL query.
+// Ex: SelectBuilder.Where(LessOrEqual(sq.Select(...), 1)).
 func LessOrEqual(e Sqlizer, v any) lessOrEqualExpr {
 	return lessOrEqualExpr{e, v}
 }
@@ -688,62 +686,41 @@ func (e lessOrEqualExpr) ToSql() (sql string, args []any, err error) {
 	return
 }
 
-// inExpr helps to use IN in SQL query
+// inExpr helps to use IN in SQL query.
 type inExpr struct {
 	column string
 	expr   any
 }
 
-// In allows to use IN in SQL query
-// Ex: SelectBuilder.Where(In("id", 1, 2, 3))
+// In allows to use IN in SQL query.
+// Ex: SelectBuilder.Where(In("id", 1, 2, 3)).
 func In(column string, e any) inExpr {
 	return inExpr{column, e}
 }
 
 func (e inExpr) ToSql() (sql string, args []any, err error) {
-	switch v := e.expr.(type) {
-	case Sqlizer:
-		sql, args, err = nestedToSql(v)
-		if err == nil && sql != "" {
-			sql = fmt.Sprintf("%s IN (%s)", e.column, sql)
-		}
-	default:
-		if isListType(v) {
-			if reflect.ValueOf(v).Len() == 0 {
-				return "", nil, nil
-			}
-
-			if reflect.ValueOf(v).Len() == 1 {
-				args = []any{reflect.ValueOf(v).Index(0).Interface()}
-				sql = fmt.Sprintf("%s=?", e.column)
-			} else {
-				args = []any{v}
-				sql = fmt.Sprintf("%s=ANY(?)", e.column)
-			}
-		} else {
-			args = []any{v}
-			sql = fmt.Sprintf("%s=?", e.column)
-		}
-	}
-
-	return sql, args, err
+	return inNotInToSql(e.column, e.expr, "IN", "=", "=ANY")
 }
 
-// notInExpr helps to use NOT IN in SQL query
+// notInExpr helps to use NOT IN in SQL query.
 type notInExpr inExpr
 
-// NotIn allows to use NOT IN in SQL query
-// Ex: SelectBuilder.Where(NotIn("id", 1, 2, 3))
+// NotIn allows to use NOT IN in SQL query.
+// Ex: SelectBuilder.Where(NotIn("id", 1, 2, 3)).
 func NotIn(column string, e any) notInExpr {
 	return notInExpr{column, e}
 }
 
 func (e notInExpr) ToSql() (sql string, args []any, err error) {
-	switch v := e.expr.(type) {
+	return inNotInToSql(e.column, e.expr, "NOT IN", "<>", "<>ALL")
+}
+
+func inNotInToSql(column string, expr any, inOp, singleOp, multiOp string) (sql string, args []any, err error) {
+	switch v := expr.(type) {
 	case Sqlizer:
 		sql, args, err = nestedToSql(v)
 		if err == nil && sql != "" {
-			sql = fmt.Sprintf("%s NOT IN (%s)", e.column, sql)
+			sql = fmt.Sprintf("%s %s (%s)", column, inOp, sql)
 		}
 	default:
 		if isListType(v) {
@@ -753,32 +730,32 @@ func (e notInExpr) ToSql() (sql string, args []any, err error) {
 
 			if reflect.ValueOf(v).Len() == 1 {
 				args = []any{reflect.ValueOf(v).Index(0).Interface()}
-				sql = fmt.Sprintf("%s<>?", e.column)
+				sql = column + singleOp + "?"
 			} else {
 				args = []any{v}
-				sql = fmt.Sprintf("%s<>ALL(?)", e.column)
+				sql = column + multiOp + "(?)"
 			}
 		} else {
 			args = []any{v}
-			sql = fmt.Sprintf("%s<>?", e.column)
+			sql = column + singleOp + "?"
 		}
 	}
 
 	return sql, args, err
 }
 
-// rangeExpr helps to use BETWEEN in SQL query
+// rangeExpr helps to use BETWEEN in SQL query.
 type rangeExpr struct {
 	column string
 	start  any
 	end    any
 }
 
-// Range allows to use range in SQL query
-// Ex: SelectBuilder.Where(Range("id", 1, 3)) -> "id BETWEEN 1 AND 3"
+// Range allows to use range in SQL query.
+// Ex: SelectBuilder.Where(Range("id", 1, 3)) -> "id BETWEEN 1 AND 3".
 // If start or end is nil, it will be omitted from the query.
-// Ex: SelectBuilder.Where(Range("id", 1, nil)) -> "id >= 1"
-// Ex: SelectBuilder.Where(Range("id", nil, 3)) -> "id <= 3"
+// Ex: SelectBuilder.Where(Range("id", 1, nil)) -> "id >= 1".
+// Ex: SelectBuilder.Where(Range("id", nil, 3)) -> "id <= 3".
 func Range(column string, start, end any) rangeExpr {
 	return rangeExpr{column, start, end}
 }
@@ -794,7 +771,7 @@ func (e rangeExpr) ToSql() (sql string, args []any, err error) {
 
 	var s Sqlizer
 	if hasStart && hasEnd {
-		s = Expr(fmt.Sprintf("%s BETWEEN ? AND ?", e.column), e.start, e.end)
+		s = Expr(e.column+" BETWEEN ? AND ?", e.start, e.end)
 	} else if hasStart {
 		s = GtOrEq{e.column: e.start}
 	} else {
@@ -828,7 +805,7 @@ func clearEmptyValue(v any) any {
 	}
 
 	t := reflect.ValueOf(v)
-	switch t.Kind() { //nolint:exhaustive
+	switch t.Kind() { //nolint:exhaustive // only specific kinds are supported for SQL type conversion
 	case reflect.Array, reflect.Slice:
 		if t.Len() != 0 {
 			newSlice := reflect.MakeSlice(t.Type(), 0, t.Len())
@@ -858,7 +835,7 @@ type cteExpr struct {
 	cte  string
 }
 
-// Cte allows to define CTE (Common Table Expressions) in SQL query
+// Cte allows to define CTE (Common Table Expressions) in SQL query.
 func Cte(e Sqlizer, cte string) cteExpr {
 	return cteExpr{e, cte}
 }
@@ -900,7 +877,7 @@ type coalesceExpr struct {
 	null  any
 }
 
-// Coalesce is a helper function to use COALESCE in SQL query
+// Coalesce is a helper function to use COALESCE in SQL query.
 func Coalesce(nullValue any, exprs ...Sqlizer) Sqlizer {
 	return coalesceExpr{exprs, nullValue}
 }
@@ -932,6 +909,6 @@ func (e coalesceExpr) ToSql() (sql string, args []any, err error) {
 	}
 
 	sql = fmt.Sprintf("COALESCE(%s, ?)", strings.Join(exprs, ", "))
-	args = append(allArgs, e.null)
-	return
+	allArgs = append(allArgs, e.null)
+	return sql, allArgs, nil
 }

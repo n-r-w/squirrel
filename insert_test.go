@@ -33,10 +33,10 @@ func TestInsertBuilderToSql(t *testing.T) {
 func TestInsertBuilderToSqlErr(t *testing.T) {
 	t.Parallel()
 	_, _, err := Insert("").Values(1).ToSql()
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	_, _, err = Insert("x").ToSql()
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestInsertBuilderMustSql(t *testing.T) {
