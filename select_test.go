@@ -432,6 +432,20 @@ func TestOrderByCond(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "SELECT id FROM users ORDER BY id ASC, created DESC NULLS LAST", sql)
 	assert.Empty(t, args)
+
+	// test with OrderNullsFirst
+	sql, args, err = Select("id").From("users").OrderByCond(columns, orderConds,
+		OrderByCondOption{
+			ColumnID:  1,
+			NullsType: OrderNullsFirst,
+		},
+		OrderByCondOption{
+			ColumnID:  2,
+			NullsType: OrderNullsLast,
+		}).ToSql()
+	require.NoError(t, err)
+	assert.Equal(t, "SELECT id FROM users ORDER BY id ASC NULLS FIRST, created DESC NULLS LAST", sql)
+	assert.Empty(t, args)
 }
 
 func TestSearch(t *testing.T) {

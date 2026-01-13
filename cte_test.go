@@ -212,3 +212,42 @@ func TestCTEFinalUpdate_DollarPlaceholderNumberingConflict(t *testing.T) {
 	assert.Equal(t, expectedSQL, sql)
 	assert.Equal(t, []any{1, 2, 3}, args)
 }
+
+func TestWithAsQuery_Replace(t *testing.T) {
+	t.Parallel()
+	w := With("lab").As(
+		Select("col").From("tab").
+			Where("simple").
+			Where("NOT hard"),
+	).Replace(Replace("ins_tab").Columns("ins_col").Select(Select("col").From("lab")))
+	q, _, err := w.ToSql()
+	require.NoError(t, err)
+
+	expectedSql := "WITH lab AS (" +
+		"SELECT col FROM tab WHERE simple AND NOT hard" +
+		") " +
+		"REPLACE INTO ins_tab (ins_col) SELECT col FROM lab"
+	assert.Equal(t, expectedSql, q)
+}
+
+func TestWithAsQuery_Delete(t *testing.T) {
+	t.Parallel()
+	w := With("lab").As(
+		Select("id").From("tab").
+			Where("simple").
+			Where("NOT hard"),
+	).Delete(
+		Delete("del_tab").
+			Where("id IN (SELECT id FROM lab)"),
+	)
+
+	q, _, err := w.ToSql()
+	require.NoError(t, err)
+
+	expectedSql := "WITH lab AS (" +
+		"SELECT id FROM tab WHERE simple AND NOT hard" +
+		") " +
+		"DELETE FROM del_tab WHERE id IN (SELECT id FROM lab)"
+
+	assert.Equal(t, expectedSql, q)
+}
