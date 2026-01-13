@@ -143,84 +143,119 @@ func (e aliasExpr) ToSql() (sql string, args []any, err error) {
 // Eq is syntactic sugar for use with Where/Having/Set methods.
 type Eq map[string]any
 
+type eqOperators struct {
+	equal   string
+	in      string
+	null    string
+	inEmpty string
+}
+
+func getEqOperators(useNotOpr bool) eqOperators {
+	if useNotOpr {
+		return eqOperators{
+			equal:   "<>",
+			in:      "NOT IN",
+			null:    "IS NOT",
+			inEmpty: sqlTrue,
+		}
+	}
+	return eqOperators{
+		equal:   "=",
+		in:      "IN",
+		null:    "IS",
+		inEmpty: sqlFalse,
+	}
+}
+
+func unwrapValue(val any) (any, error) {
+	if v, ok := val.(driver.Valuer); ok {
+		return v.Value()
+	}
+	return val, nil
+}
+
+func dereferencePointer(val any) any {
+	r := reflect.ValueOf(val)
+	if r.Kind() == reflect.Ptr {
+		if r.IsNil() {
+			return nil
+		}
+		return r.Elem().Interface()
+	}
+	return val
+}
+
+func buildListExpr(key string, val any, ops eqOperators, args []any) (sql string, result []any) {
+	valVal := reflect.ValueOf(val)
+	if valVal.Len() == 0 {
+		if args == nil {
+			args = []any{}
+		}
+		return ops.inEmpty, args
+	}
+
+	for i := 0; i < valVal.Len(); i++ {
+		args = append(args, valVal.Index(i).Interface())
+	}
+	return fmt.Sprintf("%s %s (%s)", key, ops.in, Placeholders(valVal.Len())), args
+}
+
+func buildSubqueryExpr(
+	key string, sb SelectBuilder, ops eqOperators, args []any,
+) (sql string, result []any, err error) {
+	subSql, subArgs, err := sb.toSqlRaw()
+	if err != nil {
+		return "", nil, err
+	}
+	return fmt.Sprintf("%s %s (%s)", key, ops.in, subSql), append(args, subArgs...), nil
+}
+
+func buildEqExpr(key string, val any, ops eqOperators, args []any) (sql string, result []any, err error) {
+	if val == nil {
+		return fmt.Sprintf("%s %s NULL", key, ops.null), args, nil
+	}
+
+	if isListType(val) {
+		expr, newArgs := buildListExpr(key, val, ops, args)
+		return expr, newArgs, nil
+	}
+
+	if sb, ok := val.(SelectBuilder); ok {
+		return buildSubqueryExpr(key, sb, ops, args)
+	}
+
+	return fmt.Sprintf("%s %s ?", key, ops.equal), append(args, val), nil
+}
+
 func (eq Eq) toSQL(useNotOpr bool) (sql string, args []any, err error) {
 	if len(eq) == 0 {
-		// Empty Sql{} evaluates to true.
-		sql = sqlTrue
-		return sql, args, nil
+		return sqlTrue, args, nil
 	}
 
-	var (
-		exprs       = make([]string, 0, len(eq))
-		equalOpr    = "="
-		inOpr       = "IN"
-		nullOpr     = "IS"
-		inEmptyExpr = sqlFalse
-	)
-
-	if useNotOpr {
-		equalOpr = "<>"
-		inOpr = "NOT IN"
-		nullOpr = "IS NOT"
-		inEmptyExpr = sqlTrue
-	}
-
+	ops := getEqOperators(useNotOpr)
+	exprs := make([]string, 0, len(eq))
 	sortedKeys := getSortedKeys(eq)
+
 	for _, key := range sortedKeys {
-		var expr1 string
 		val := eq[key]
 
-		if v, ok := val.(driver.Valuer); ok {
-			if val, err = v.Value(); err != nil {
-				return "", nil, err
-			}
+		val, err = unwrapValue(val)
+		if err != nil {
+			return "", nil, err
 		}
 
-		r := reflect.ValueOf(val)
-		if r.Kind() == reflect.Ptr {
-			if r.IsNil() {
-				val = nil
-			} else {
-				val = r.Elem().Interface()
-			}
+		val = dereferencePointer(val)
+
+		var expr1 string
+		expr1, args, err = buildEqExpr(key, val, ops, args)
+		if err != nil {
+			return "", nil, err
 		}
 
-		if val == nil {
-			expr1 = fmt.Sprintf("%s %s NULL", key, nullOpr)
-		} else {
-			if isListType(val) {
-				valVal := reflect.ValueOf(val)
-				if valVal.Len() == 0 {
-					expr1 = inEmptyExpr
-					if args == nil {
-						args = []any{}
-					}
-				} else {
-					for i := 0; i < valVal.Len(); i++ {
-						args = append(args, valVal.Index(i).Interface())
-					}
-					expr1 = fmt.Sprintf("%s %s (%s)", key, inOpr, Placeholders(valVal.Len()))
-				}
-			} else if sb, ok := val.(SelectBuilder); ok {
-				var (
-					subSql  string
-					subArgs []any
-				)
-				subSql, subArgs, err = sb.toSqlRaw()
-				if err != nil {
-					return "", nil, err
-				}
-				expr1 = fmt.Sprintf("%s %s (%s)", key, inOpr, subSql)
-				args = append(args, subArgs...)
-			} else {
-				expr1 = fmt.Sprintf("%s %s ?", key, equalOpr)
-				args = append(args, val)
-			}
-		}
 		exprs = append(exprs, expr1)
 	}
-	sql = strings.Join(exprs, " AND ")
-	return sql, args, nil
+
+	return strings.Join(exprs, " AND "), args, nil
 }
 
 func (eq Eq) ToSql() (sql string, args []any, err error) {

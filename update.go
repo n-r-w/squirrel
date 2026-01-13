@@ -29,78 +29,81 @@ type setClause struct {
 	value  any
 }
 
-func (d *updateData) toSqlRaw() (sqlStr string, args []any, err error) {
-	if d.Table == "" {
-		err = errors.New("update statements must specify a table")
+func (d *updateData) writePrefixes(sql *bytes.Buffer, args []any) ([]any, error) {
+	if len(d.Prefixes) == 0 {
+		return args, nil
+	}
+
+	args, err := appendToSql(d.Prefixes, sql, " ", args)
+	if err != nil {
+		return nil, err
+	}
+
+	_, _ = sql.WriteString(" ")
+	return args, nil
+}
+
+func buildSetClauseSQL(sc setClause) (sql string, args []any, err error) {
+	vs, ok := sc.value.(Sqlizer)
+	if !ok {
+		return sc.column + " = ?", []any{sc.value}, nil
+	}
+
+	vsql, vargs, err := nestedToSql(vs)
+	if err != nil {
 		return "", nil, err
 	}
-	if len(d.SetClauses) == 0 {
-		err = errors.New("update statements must have at least one Set clause")
-		return "", nil, err
+
+	if _, isSelect := vs.(SelectBuilder); isSelect {
+		return fmt.Sprintf("%s = (%s)", sc.column, vsql), vargs, nil
 	}
 
-	sql := &bytes.Buffer{}
+	return fmt.Sprintf("%s = %s", sc.column, vsql), vargs, nil
+}
 
-	if len(d.Prefixes) > 0 {
-		args, err = appendToSql(d.Prefixes, sql, " ", args)
-		if err != nil {
-			return "", nil, err
-		}
-
-		_, _ = sql.WriteString(" ")
-	}
-
-	_, _ = sql.WriteString("UPDATE ")
-	_, _ = sql.WriteString(d.Table)
-
+func (d *updateData) writeSetClauses(sql *bytes.Buffer, args []any) ([]any, error) {
 	_, _ = sql.WriteString(" SET ")
+
 	setSqls := make([]string, len(d.SetClauses))
-	for i, setClause := range d.SetClauses {
-		var valSql string
-		if vs, ok := setClause.value.(Sqlizer); ok {
-			var (
-				vsql  string
-				vargs []any
-			)
-			vsql, vargs, err = nestedToSql(vs)
-			if err != nil {
-				return "", nil, err
-			}
-			if _, ok := vs.(SelectBuilder); ok {
-				valSql = fmt.Sprintf("(%s)", vsql)
-			} else {
-				valSql = vsql
-			}
-			args = append(args, vargs...)
-		} else {
-			valSql = "?"
-			args = append(args, setClause.value)
+	for i, sc := range d.SetClauses {
+		setSql, setArgs, err := buildSetClauseSQL(sc)
+		if err != nil {
+			return nil, err
 		}
-		setSqls[i] = fmt.Sprintf("%s = %s", setClause.column, valSql)
+		setSqls[i] = setSql
+		args = append(args, setArgs...)
 	}
+
 	_, _ = sql.WriteString(strings.Join(setSqls, ", "))
+	return args, nil
+}
 
-	if d.From != nil {
-		_, _ = sql.WriteString(" FROM ")
-		args, err = appendToSql([]Sqlizer{d.From}, sql, "", args)
-		if err != nil {
-			return "", nil, err
-		}
+func (d *updateData) writeFromClause(sql *bytes.Buffer, args []any) ([]any, error) {
+	if d.From == nil {
+		return args, nil
 	}
 
-	if len(d.WhereParts) > 0 {
-		_, _ = sql.WriteString(" WHERE ")
-		args, err = appendToSql(d.WhereParts, sql, " AND ", args)
-		if err != nil {
-			return "", nil, err
-		}
+	_, _ = sql.WriteString(" FROM ")
+	return appendToSql([]Sqlizer{d.From}, sql, "", args)
+}
+
+func (d *updateData) writeWhereClause(sql *bytes.Buffer, args []any) ([]any, error) {
+	if len(d.WhereParts) == 0 {
+		return args, nil
 	}
 
+	_, _ = sql.WriteString(" WHERE ")
+	return appendToSql(d.WhereParts, sql, " AND ", args)
+}
+
+func (d *updateData) writeOrderByClause(sql *bytes.Buffer) {
 	if len(d.OrderBys) > 0 {
 		_, _ = sql.WriteString(" ORDER BY ")
 		_, _ = sql.WriteString(strings.Join(d.OrderBys, ", "))
 	}
+}
 
+func (d *updateData) writeLimitOffset(sql *bytes.Buffer) {
 	if d.Limit != "" {
 		_, _ = sql.WriteString(" LIMIT ")
 		_, _ = sql.WriteString(d.Limit)
@@ -110,13 +113,51 @@ func (d *updateData) toSqlRaw() (sqlStr string, args []any, err error) {
 		_, _ = sql.WriteString(" OFFSET ")
 		_, _ = sql.WriteString(d.Offset)
 	}
+}
 
-	if len(d.Suffixes) > 0 {
-		_, _ = sql.WriteString(" ")
-		args, err = appendToSql(d.Suffixes, sql, " ", args)
-		if err != nil {
-			return "", nil, err
-		}
+func (d *updateData) writeSuffixes(sql *bytes.Buffer, args []any) ([]any, error) {
+	if len(d.Suffixes) == 0 {
+		return args, nil
+	}
+
+	_, _ = sql.WriteString(" ")
+	return appendToSql(d.Suffixes, sql, " ", args)
+}
+
+func (d *updateData) toSqlRaw() (sqlStr string, args []any, err error) {
+	if d.Table == "" {
+		return "", nil, errors.New("update statements must specify a table")
+	}
+	if len(d.SetClauses) == 0 {
+		return "", nil, errors.New("update statements must have at least one Set clause")
+	}
+
+	sql := &bytes.Buffer{}
+
+	if args, err = d.writePrefixes(sql, args); err != nil {
+		return "", nil, err
+	}
+
+	_, _ = sql.WriteString("UPDATE ")
+	_, _ = sql.WriteString(d.Table)
+
+	if args, err = d.writeSetClauses(sql, args); err != nil {
+		return "", nil, err
+	}
+
+	if args, err = d.writeFromClause(sql, args); err != nil {
+		return "", nil, err
+	}
+
+	if args, err = d.writeWhereClause(sql, args); err != nil {
+		return "", nil, err
+	}
+
+	d.writeOrderByClause(sql)
+	d.writeLimitOffset(sql)
+
+	if args, err = d.writeSuffixes(sql, args); err != nil {
+		return "", nil, err
 	}
 
 	return sql.String(), args, nil
