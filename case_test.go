@@ -6,9 +6,11 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCaseWithVal(t *testing.T) {
+	t.Parallel()
 	caseStmt := Case("number").
 		When("1", "one").
 		When("2", "two").
@@ -19,7 +21,7 @@ func TestCaseWithVal(t *testing.T) {
 		From("table")
 	sql, args, err := qb.ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "SELECT CASE number " +
 		"WHEN 1 THEN CAST(? AS text) " +
@@ -34,6 +36,7 @@ func TestCaseWithVal(t *testing.T) {
 }
 
 func TestCaseWithComplexVal(t *testing.T) {
+	t.Parallel()
 	caseStmt := Case("? > ?", 10, 5).
 		When("true", "T")
 
@@ -42,7 +45,7 @@ func TestCaseWithComplexVal(t *testing.T) {
 		From("table")
 	sql, args, err := qb.ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "SELECT (CASE ? > ? " +
 		"WHEN true THEN CAST(? AS text) " +
@@ -55,6 +58,7 @@ func TestCaseWithComplexVal(t *testing.T) {
 }
 
 func TestCaseWithNoVal(t *testing.T) {
+	t.Parallel()
 	caseStmt := Case().
 		When(Eq{"x": 0}, Expr("x is zero")).
 		When(Expr("x > ?", 1), Expr("CONCAT('x is greater than ', ?)", 2))
@@ -62,7 +66,7 @@ func TestCaseWithNoVal(t *testing.T) {
 	qb := Select().Column(caseStmt).From("table")
 	sql, args, err := qb.ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "SELECT CASE " +
 		"WHEN x = ? THEN x is zero " +
@@ -77,6 +81,7 @@ func TestCaseWithNoVal(t *testing.T) {
 }
 
 func TestCaseWithExpr(t *testing.T) {
+	t.Parallel()
 	caseStmt := Case(Expr("x = ?", true)).
 		When("1 > 0", Expr("?::text", "it's true!")).
 		When("1 > 0", "test").
@@ -88,7 +93,7 @@ func TestCaseWithExpr(t *testing.T) {
 	qb := Select().Column(caseStmt).From("table")
 	sql, args, err := qb.ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "SELECT CASE x = ? " +
 		"WHEN 1 > 0 THEN ?::text " +
@@ -115,6 +120,7 @@ func TestCaseWithExpr(t *testing.T) {
 }
 
 func TestMultipleCase(t *testing.T) {
+	t.Parallel()
 	caseStmtNoval := Case(Expr("x = ?", true)).
 		When("true", Expr("?", "it's true!")).
 		Else(42)
@@ -129,7 +135,7 @@ func TestMultipleCase(t *testing.T) {
 
 	sql, args, err := qb.ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "SELECT " +
 		"(CASE x = ? WHEN true THEN ? ELSE ? END) AS case_noval, " +
@@ -146,6 +152,7 @@ func TestMultipleCase(t *testing.T) {
 }
 
 func TestCaseWithNoWhenClause(t *testing.T) {
+	t.Parallel()
 	caseStmt := Case("something").
 		Else("42")
 
@@ -153,12 +160,13 @@ func TestCaseWithNoWhenClause(t *testing.T) {
 
 	_, _, err := qb.ToSql()
 
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	assert.Equal(t, "case expression must contain at lease one WHEN clause", err.Error())
 }
 
 func TestCaseBuilderMustSql(t *testing.T) {
+	t.Parallel()
 	defer func() {
 		if r := recover(); r == nil {
 			t.Errorf("TestCaseBuilderMustSql should have panicked!")
@@ -168,6 +176,7 @@ func TestCaseBuilderMustSql(t *testing.T) {
 }
 
 func TestCaseNull(t *testing.T) {
+	t.Parallel()
 	caseStmt := Case().
 		When("1", nil).
 		Else(nil)
@@ -177,7 +186,7 @@ func TestCaseNull(t *testing.T) {
 		From("table")
 
 	sql, args, err := qb.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "SELECT CASE " +
 		"WHEN 1 THEN ? " +
@@ -189,6 +198,7 @@ func TestCaseNull(t *testing.T) {
 }
 
 func TestSqlTypeNameHelper(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		arg     reflect.Type
@@ -215,7 +225,9 @@ func TestSqlTypeNameHelper(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t1 *testing.T) {
+			t1.Parallel()
 			got, err := sqlTypeNameHelper(tt.arg)
 			if (err != nil) != tt.wantErr {
 				t1.Errorf("sqlTypeNameHelper() error = %v, wantErr %v", err, tt.wantErr)

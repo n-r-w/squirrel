@@ -2,7 +2,9 @@ package squirrel
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"golang.org/x/exp/slices"
@@ -37,9 +39,10 @@ type Paginator struct {
 // PaginatorByPage creates a new Paginator for pagination by page.
 func PaginatorByPage(pageSize, pageNum uint64) Paginator {
 	return Paginator{
-		limit: pageSize,
-		page:  pageNum,
-		pType: PaginatorTypeByPage,
+		limit:  pageSize,
+		page:   pageNum,
+		lastID: 0,
+		pType:  PaginatorTypeByPage,
 	}
 }
 
@@ -47,27 +50,28 @@ func PaginatorByPage(pageSize, pageNum uint64) Paginator {
 func PaginatorByID(limit uint64, lastID int64) Paginator {
 	return Paginator{
 		limit:  limit,
+		page:   0,
 		lastID: lastID,
 		pType:  PaginatorTypeByID,
 	}
 }
 
-// PageSize returns the page size for PaginatorTypeByPage
+// PageSize returns the page size for PaginatorTypeByPage.
 func (p Paginator) PageSize() uint64 {
 	return p.limit
 }
 
-// PageNumber returns the page number for PaginatorTypeByPage
+// PageNumber returns the page number for PaginatorTypeByPage.
 func (p Paginator) PageNumber() uint64 {
 	return p.page
 }
 
-// Limit returns the limit for PaginatorTypeByID
+// Limit returns the limit for PaginatorTypeByID.
 func (p Paginator) Limit() uint64 {
 	return p.limit
 }
 
-// LastID returns the last ID for PaginatorTypeByID
+// LastID returns the last ID for PaginatorTypeByID.
 func (p Paginator) LastID() int64 {
 	return p.lastID
 }
@@ -119,23 +123,21 @@ func (d *selectData) ToSql() (sqlStr string, args []any, err error) {
 	return
 }
 
-func (d *selectData) toSqlRaw() (sqlStr string, args []any, err error) {
-	if len(d.Columns) == 0 {
-		err = fmt.Errorf("select statements must have at least one result column")
-		return "", nil, err
+func (d *selectData) writePrefixes(sql *bytes.Buffer, args []any) ([]any, error) {
+	if len(d.Prefixes) == 0 {
+		return args, nil
 	}
 
-	sql := &bytes.Buffer{}
-
-	if len(d.Prefixes) > 0 {
-		args, err = appendToSql(d.Prefixes, sql, " ", args)
-		if err != nil {
-			return "", nil, err
-		}
-
-		_, _ = sql.WriteString(" ")
+	args, err := appendToSql(d.Prefixes, sql, " ", args)
+	if err != nil {
+		return nil, err
 	}
 
+	_, _ = sql.WriteString(" ")
+	return args, nil
+}
+
+func (d *selectData) writeSelectClause(sql *bytes.Buffer, args []any) ([]any, error) {
 	_, _ = sql.WriteString("SELECT ")
 
 	if len(d.Options) > 0 {
@@ -143,88 +145,104 @@ func (d *selectData) toSqlRaw() (sqlStr string, args []any, err error) {
 		_, _ = sql.WriteString(" ")
 	}
 
-	if len(d.Columns) > 0 {
-		args, err = appendToSql(d.Columns, sql, ", ", args)
-		if err != nil {
-			return "", nil, err
-		}
+	return appendToSql(d.Columns, sql, ", ", args)
+}
+
+func (d *selectData) writeFromClause(sql *bytes.Buffer, args []any) ([]any, error) {
+	if d.From == nil {
+		return args, nil
 	}
 
-	if d.From != nil {
-		_, _ = sql.WriteString(" FROM ")
-		args, err = appendToSql([]Sqlizer{d.From}, sql, "", args)
-		if err != nil {
-			return "", nil, err
-		}
+	_, _ = sql.WriteString(" FROM ")
+	return appendToSql([]Sqlizer{d.From}, sql, "", args)
+}
+
+func (d *selectData) writeJoins(sql *bytes.Buffer, args []any) ([]any, error) {
+	if len(d.Joins) == 0 {
+		return args, nil
 	}
 
-	if len(d.Joins) > 0 {
-		_, _ = sql.WriteString(" ")
-		args, err = appendToSql(d.Joins, sql, " ", args)
-		if err != nil {
-			return "", nil, err
-		}
-	}
+	_, _ = sql.WriteString(" ")
+	return appendToSql(d.Joins, sql, " ", args)
+}
 
-	whereParts := make([]Sqlizer, len(d.WhereParts))
-	copy(whereParts, d.WhereParts)
+func (d *selectData) buildWhereParts() ([]Sqlizer, error) {
+	whereParts := make([]Sqlizer, 0, len(d.WhereParts)+1)
+	whereParts = append(whereParts, d.WhereParts...)
 
 	if d.Paginator.pType == PaginatorTypeByID {
 		if d.IDColumn == "" {
-			return "", nil, fmt.Errorf("IDColumn is required for pagination by ID")
+			return nil, errors.New("IDColumn is required for pagination by ID")
 		}
-
 		whereParts = append(whereParts, Gt{d.IDColumn: d.Paginator.lastID})
 	}
 
-	if len(whereParts) > 0 {
-		_, _ = sql.WriteString(" WHERE ")
-		args, err = appendToSql(whereParts, sql, " AND ", args)
-		if err != nil {
-			return "", nil, err
-		}
+	return whereParts, nil
+}
+
+func (d *selectData) writeWhereClause(sql *bytes.Buffer, args []any) ([]any, error) {
+	whereParts, err := d.buildWhereParts()
+	if err != nil {
+		return nil, err
 	}
 
+	if len(whereParts) == 0 {
+		return args, nil
+	}
+
+	_, _ = sql.WriteString(" WHERE ")
+	return appendToSql(whereParts, sql, " AND ", args)
+}
+
+func (d *selectData) writeGroupByClause(sql *bytes.Buffer) {
 	if len(d.GroupBys) > 0 {
 		_, _ = sql.WriteString(" GROUP BY ")
 		_, _ = sql.WriteString(strings.Join(d.GroupBys, ", "))
 	}
+}
 
-	if len(d.HavingParts) > 0 {
-		_, _ = sql.WriteString(" HAVING ")
-		args, err = appendToSql(d.HavingParts, sql, " AND ", args)
-		if err != nil {
-			return "", nil, err
-		}
+func (d *selectData) writeHavingClause(sql *bytes.Buffer, args []any) ([]any, error) {
+	if len(d.HavingParts) == 0 {
+		return args, nil
 	}
 
-	if len(d.OrderByParts) > 0 {
-		_, _ = sql.WriteString(" ORDER BY ")
-		args, err = appendToSql(d.OrderByParts, sql, ", ", args)
-		if err != nil {
-			return "", nil, err
-		}
+	_, _ = sql.WriteString(" HAVING ")
+	return appendToSql(d.HavingParts, sql, " AND ", args)
+}
+
+func (d *selectData) writeOrderByClause(sql *bytes.Buffer, args []any) ([]any, error) {
+	if len(d.OrderByParts) == 0 {
+		return args, nil
 	}
 
-	if len(d.Limit) > 0 {
+	_, _ = sql.WriteString(" ORDER BY ")
+	return appendToSql(d.OrderByParts, sql, ", ", args)
+}
+
+func (d *selectData) writeLimitOffset(sql *bytes.Buffer) error {
+	if d.Limit != "" {
 		if d.Paginator.pType != PaginatorTypeUndefined {
-			return "", nil, fmt.Errorf("limit and paginator cannot be used together")
+			return errors.New("limit and paginator cannot be used together")
 		}
-
 		_, _ = sql.WriteString(" LIMIT ")
 		_, _ = sql.WriteString(d.Limit)
 	}
 
-	if len(d.Offset) > 0 {
+	if d.Offset != "" {
 		if d.Paginator.pType != PaginatorTypeUndefined {
-			return "", nil, fmt.Errorf("offset and paginator cannot be used together")
+			return errors.New("offset and paginator cannot be used together")
 		}
-
 		_, _ = sql.WriteString(" OFFSET ")
 		_, _ = sql.WriteString(d.Offset)
 	}
 
+	return nil
+}
+
+func (d *selectData) writePagination(sql *bytes.Buffer) {
 	switch d.Paginator.pType {
+	case PaginatorTypeUndefined:
+		// No pagination
 	case PaginatorTypeByPage:
 		_, _ = fmt.Fprintf(sql, " LIMIT %d", d.Paginator.limit)
 		if d.Paginator.page > 1 {
@@ -233,18 +251,65 @@ func (d *selectData) toSqlRaw() (sqlStr string, args []any, err error) {
 	case PaginatorTypeByID:
 		_, _ = fmt.Fprintf(sql, " LIMIT %d", d.Paginator.limit)
 	}
+}
 
-	if len(d.Suffixes) > 0 {
-		_, _ = sql.WriteString(" ")
-
-		args, err = appendToSql(d.Suffixes, sql, " ", args)
-		if err != nil {
-			return "", nil, err
-		}
+func (d *selectData) writeSuffixes(sql *bytes.Buffer, args []any) ([]any, error) {
+	if len(d.Suffixes) == 0 {
+		return args, nil
 	}
 
-	sqlStr = sql.String()
-	return sqlStr, args, nil
+	_, _ = sql.WriteString(" ")
+	return appendToSql(d.Suffixes, sql, " ", args)
+}
+
+func (d *selectData) toSqlRaw() (sqlStr string, args []any, err error) {
+	if len(d.Columns) == 0 {
+		return "", nil, errors.New("select statements must have at least one result column")
+	}
+
+	sql := &bytes.Buffer{}
+
+	if args, err = d.writePrefixes(sql, args); err != nil {
+		return "", nil, err
+	}
+
+	if args, err = d.writeSelectClause(sql, args); err != nil {
+		return "", nil, err
+	}
+
+	if args, err = d.writeFromClause(sql, args); err != nil {
+		return "", nil, err
+	}
+
+	if args, err = d.writeJoins(sql, args); err != nil {
+		return "", nil, err
+	}
+
+	if args, err = d.writeWhereClause(sql, args); err != nil {
+		return "", nil, err
+	}
+
+	d.writeGroupByClause(sql)
+
+	if args, err = d.writeHavingClause(sql, args); err != nil {
+		return "", nil, err
+	}
+
+	if args, err = d.writeOrderByClause(sql, args); err != nil {
+		return "", nil, err
+	}
+
+	if err := d.writeLimitOffset(sql); err != nil {
+		return "", nil, err
+	}
+
+	d.writePagination(sql)
+
+	if args, err = d.writeSuffixes(sql, args); err != nil {
+		return "", nil, err
+	}
+
+	return sql.String(), args, nil
 }
 
 // Builder
@@ -252,8 +317,8 @@ func (d *selectData) toSqlRaw() (sqlStr string, args []any, err error) {
 // SelectBuilder builds SQL SELECT statements.
 type SelectBuilder builder.Builder
 
-func init() {
-	builder.Register(SelectBuilder{}, selectData{})
+func init() { //nolint:gochecknoinits // required to register SelectBuilder
+	builder.Register(SelectBuilder{}, selectData{}) //nolint:exhaustruct // empty struct is fine
 }
 
 // Format methods
@@ -267,19 +332,19 @@ func (b SelectBuilder) PlaceholderFormat(f PlaceholderFormat) SelectBuilder {
 // SQL methods
 
 // ToSql builds the query into a SQL string and bound args.
-func (b SelectBuilder) ToSql() (string, []any, error) {
+func (b SelectBuilder) ToSql() (sql string, args []any, err error) {
 	data := builder.GetStruct(b).(selectData)
 	return data.ToSql()
 }
 
-func (b SelectBuilder) toSqlRaw() (string, []any, error) {
+func (b SelectBuilder) toSqlRaw() (sql string, args []any, err error) {
 	data := builder.GetStruct(b).(selectData)
 	return data.toSqlRaw()
 }
 
 // MustSql builds the query into a SQL string and bound args.
 // It panics if there are any errors.
-func (b SelectBuilder) MustSql() (string, []any) {
+func (b SelectBuilder) MustSql() (sql string, args []any) {
 	sql, args, err := b.ToSql()
 	if err != nil {
 		panic(err)
@@ -287,12 +352,12 @@ func (b SelectBuilder) MustSql() (string, []any) {
 	return sql, args
 }
 
-// Prefix adds an expression to the beginning of the query
+// Prefix adds an expression to the beginning of the query.
 func (b SelectBuilder) Prefix(sql string, args ...any) SelectBuilder {
 	return b.PrefixExpr(Expr(sql, args...))
 }
 
-// PrefixExpr adds an expression to the very beginning of the query
+// PrefixExpr adds an expression to the very beginning of the query.
 func (b SelectBuilder) PrefixExpr(e Sqlizer) SelectBuilder {
 	return builder.Append(b, "Prefixes", e).(SelectBuilder)
 }
@@ -302,7 +367,7 @@ func (b SelectBuilder) Distinct() SelectBuilder {
 	return b.Options("DISTINCT")
 }
 
-// Options adds select option to the query
+// Options adds select option to the query.
 func (b SelectBuilder) Options(options ...string) SelectBuilder {
 	return builder.Extend(b, "Options", options).(SelectBuilder)
 }
@@ -509,7 +574,7 @@ func (b SelectBuilder) PaginateByID(limit uint64, startID int64, columnID string
 
 // PaginateByPage adds a LIMIT and OFFSET condition to the query.
 // WARNING: query must be ordered to avoid unexpected results!
-func (b SelectBuilder) PaginateByPage(limit uint64, page uint64) SelectBuilder {
+func (b SelectBuilder) PaginateByPage(limit, page uint64) SelectBuilder {
 	sb := b.Limit(limit)
 	if page > 1 {
 		sb = sb.Offset(limit * (page - 1))
@@ -531,17 +596,17 @@ func (b SelectBuilder) SetIDColumn(column string) SelectBuilder {
 
 // Limit sets a LIMIT clause on the query.
 func (b SelectBuilder) Limit(limit uint64) SelectBuilder {
-	return builder.Set(b, "Limit", fmt.Sprintf("%d", limit)).(SelectBuilder)
+	return builder.Set(b, "Limit", strconv.FormatUint(limit, 10)).(SelectBuilder)
 }
 
-// RemoveLimit Limit ALL allows to access all records with limit
+// RemoveLimit removes LIMIT clause allowing access to all records.
 func (b SelectBuilder) RemoveLimit() SelectBuilder {
 	return builder.Delete(b, "Limit").(SelectBuilder)
 }
 
 // Offset sets a OFFSET clause on the query.
 func (b SelectBuilder) Offset(offset uint64) SelectBuilder {
-	return builder.Set(b, "Offset", fmt.Sprintf("%d", offset)).(SelectBuilder)
+	return builder.Set(b, "Offset", strconv.FormatUint(offset, 10)).(SelectBuilder)
 }
 
 // RemoveOffset removes OFFSET clause.
@@ -549,12 +614,12 @@ func (b SelectBuilder) RemoveOffset() SelectBuilder {
 	return builder.Delete(b, "Offset").(SelectBuilder)
 }
 
-// Suffix adds an expression to the end of the query
+// Suffix adds an expression to the end of the query.
 func (b SelectBuilder) Suffix(sql string, args ...any) SelectBuilder {
 	return b.SuffixExpr(Expr(sql, args...))
 }
 
-// SuffixExpr adds an expression to the end of the query
+// SuffixExpr adds an expression to the end of the query.
 func (b SelectBuilder) SuffixExpr(e Sqlizer) SelectBuilder {
 	return builder.Append(b, "Suffixes", e).(SelectBuilder)
 }
@@ -592,23 +657,26 @@ func (a alias) OrderBy(orderBys ...string) SelectBuilder {
 	return a.builder.OrderBy(prepareAliasColumns(a.table, a.prefix, orderBys...)...)
 }
 
+func formatAliasColumn(table, column string, prefix []string, hasPrefix bool) string {
+	if !hasPrefix {
+		if table == "" {
+			return column
+		}
+		return fmt.Sprintf("%s.%s", table, column)
+	}
+
+	if table == "" {
+		return fmt.Sprintf("%s AS %s_%s", column, prefix[0], column)
+	}
+	return fmt.Sprintf("%s.%s AS %s_%s", table, column, prefix[0], column)
+}
+
 func prepareAliasColumns(table string, prefix []string, columns ...string) []string {
 	columnsPrepared := make([]string, 0, len(columns))
+	hasPrefix := len(prefix) > 0
 
 	for _, column := range columns {
-		if len(prefix) == 0 {
-			if table == "" {
-				columnsPrepared = append(columnsPrepared, column)
-			} else {
-				columnsPrepared = append(columnsPrepared, fmt.Sprintf("%s.%s", table, column))
-			}
-		} else {
-			if table == "" {
-				columnsPrepared = append(columnsPrepared, fmt.Sprintf("%s AS %s_%s", column, prefix[0], column))
-			} else {
-				columnsPrepared = append(columnsPrepared, fmt.Sprintf("%s.%s AS %s_%s", table, column, prefix[0], column))
-			}
-		}
+		columnsPrepared = append(columnsPrepared, formatAliasColumn(table, column, prefix, hasPrefix))
 	}
 
 	return columnsPrepared

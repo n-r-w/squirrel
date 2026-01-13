@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSelectBuilderToSql(t *testing.T) {
+	t.Parallel()
 	subQ := Select("aa", "bb").From("dd")
 	b := Select("a", "b").
 		Prefix("WITH prefix AS ?", 0).
@@ -40,7 +41,7 @@ func TestSelectBuilderToSql(t *testing.T) {
 		Suffix("FETCH FIRST ? ROWS ONLY", 14)
 
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "WITH prefix AS ? " +
 		"SELECT DISTINCT a, b, c, IF(d IN (?,?,?), 1, 0) as stat_column, a > ?, " +
@@ -58,10 +59,11 @@ func TestSelectBuilderToSql(t *testing.T) {
 }
 
 func TestSelectBuilderFromSelect(t *testing.T) {
+	t.Parallel()
 	subQ := Select("c").From("d").Where(Eq{"i": 0})
 	b := Select("a", "b").FromSelect(subQ, "subq")
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "SELECT a, b FROM (SELECT c FROM d WHERE i = ?) AS subq"
 	assert.Equal(t, expectedSql, sql)
@@ -71,6 +73,7 @@ func TestSelectBuilderFromSelect(t *testing.T) {
 }
 
 func TestSelectBuilderFromSelectNestedDollarPlaceholders(t *testing.T) {
+	t.Parallel()
 	subQ := Select("c").
 		From("t").
 		Where(Gt{"c": 1}).
@@ -80,7 +83,7 @@ func TestSelectBuilderFromSelectNestedDollarPlaceholders(t *testing.T) {
 		Where(Lt{"c": 2}).
 		PlaceholderFormat(Dollar)
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "SELECT c FROM (SELECT c FROM t WHERE c > $1) AS subq WHERE c < $2"
 	assert.Equal(t, expectedSql, sql)
@@ -90,11 +93,13 @@ func TestSelectBuilderFromSelectNestedDollarPlaceholders(t *testing.T) {
 }
 
 func TestSelectBuilderToSqlErr(t *testing.T) {
+	t.Parallel()
 	_, _, err := Select().From("x").ToSql()
 	assert.Error(t, err)
 }
 
 func TestSelectBuilderPlaceholders(t *testing.T) {
+	t.Parallel()
 	b := Select("test").Where("x = ? AND y = ?")
 
 	sql, _, _ := b.PlaceholderFormat(Question).ToSql()
@@ -111,32 +116,35 @@ func TestSelectBuilderPlaceholders(t *testing.T) {
 }
 
 func TestSelectBuilderSimpleJoin(t *testing.T) {
+	t.Parallel()
 	expectedSql := "SELECT * FROM bar JOIN baz ON bar.foo = baz.foo"
 	expectedArgs := []any(nil)
 
 	b := Select("*").From("bar").Join("baz ON bar.foo = baz.foo")
 
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, expectedSql, sql)
-	assert.Equal(t, args, expectedArgs)
+	assert.Equal(t, expectedArgs, args)
 }
 
 func TestSelectBuilderParamJoin(t *testing.T) {
+	t.Parallel()
 	expectedSql := "SELECT * FROM bar JOIN baz ON bar.foo = baz.foo AND baz.foo = ?"
 	expectedArgs := []any{42}
 
 	b := Select("*").From("bar").Join("baz ON bar.foo = baz.foo AND baz.foo = ?", 42)
 
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, expectedSql, sql)
-	assert.Equal(t, args, expectedArgs)
+	assert.Equal(t, expectedArgs, args)
 }
 
 func TestSelectBuilderNestedSelectJoin(t *testing.T) {
+	t.Parallel()
 	expectedSql := "SELECT * FROM bar JOIN ( SELECT * FROM baz WHERE foo = ? ) r ON bar.foo = r.foo"
 	expectedArgs := []any{42}
 
@@ -145,44 +153,49 @@ func TestSelectBuilderNestedSelectJoin(t *testing.T) {
 	b := Select("*").From("bar").JoinClause(nestedSelect.Prefix("JOIN (").Suffix(") r ON bar.foo = r.foo"))
 
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, expectedSql, sql)
-	assert.Equal(t, args, expectedArgs)
+	assert.Equal(t, expectedArgs, args)
 }
 
 func TestSelectWithOptions(t *testing.T) {
+	t.Parallel()
 	sql, _, err := Select("*").From("foo").Distinct().Options("SQL_NO_CACHE").ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT DISTINCT SQL_NO_CACHE * FROM foo", sql)
 }
 
 func TestSelectWithRemoveLimit(t *testing.T) {
+	t.Parallel()
 	sql, _, err := Select("*").From("foo").Limit(10).RemoveLimit().ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT * FROM foo", sql)
 }
 
 func TestSelectWithRemoveOffset(t *testing.T) {
+	t.Parallel()
 	sql, _, err := Select("*").From("foo").Offset(10).RemoveOffset().ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT * FROM foo", sql)
 }
 
 func TestSelectBuilderNestedSelectDollar(t *testing.T) {
+	t.Parallel()
 	nestedBuilder := StatementBuilder.PlaceholderFormat(Dollar).Select("*").Prefix("NOT EXISTS (").
 		From("bar").Where("y = ?", 42).Suffix(")")
 	outerSql, _, err := StatementBuilder.PlaceholderFormat(Dollar).Select("*").
 		From("foo").Where("x = ?").Where(nestedBuilder).ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT * FROM foo WHERE x = $1 AND NOT EXISTS ( SELECT * FROM bar WHERE y = $2 )", outerSql)
 }
 
 func TestSelectBuilderMustSql(t *testing.T) {
+	t.Parallel()
 	defer func() {
 		if r := recover(); r == nil {
 			t.Errorf("TestSelectBuilderMustSql should have panicked!")
@@ -193,24 +206,28 @@ func TestSelectBuilderMustSql(t *testing.T) {
 }
 
 func TestSelectWithoutWhereClause(t *testing.T) {
+	t.Parallel()
 	sql, _, err := Select("*").From("users").ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT * FROM users", sql)
 }
 
 func TestSelectWithNilWhereClause(t *testing.T) {
+	t.Parallel()
 	sql, _, err := Select("*").From("users").Where(nil).ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT * FROM users", sql)
 }
 
 func TestSelectWithEmptyStringWhereClause(t *testing.T) {
+	t.Parallel()
 	sql, _, err := Select("*").From("users").Where("").ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT * FROM users", sql)
 }
 
 func TestSelectSubqueryPlaceholderNumbering(t *testing.T) {
+	t.Parallel()
 	subquery := Select("a").Where("b = ?", 1).PlaceholderFormat(Dollar)
 	with := subquery.Prefix("WITH a AS (").Suffix(")")
 
@@ -220,7 +237,7 @@ func TestSelectSubqueryPlaceholderNumbering(t *testing.T) {
 		Where("c = ?", 2).
 		PlaceholderFormat(Dollar).
 		ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "WITH a AS ( SELECT a WHERE b = $1 ) SELECT * FROM (SELECT a WHERE b = $2) AS q WHERE c = $3"
 	assert.Equal(t, expectedSql, sql)
@@ -228,6 +245,7 @@ func TestSelectSubqueryPlaceholderNumbering(t *testing.T) {
 }
 
 func TestSelectSubqueryInConjunctionPlaceholderNumbering(t *testing.T) {
+	t.Parallel()
 	subquery := Select("a").Where(Eq{"b": 1}).Prefix("EXISTS(").Suffix(")").PlaceholderFormat(Dollar)
 
 	sql, args, err := Select("*").
@@ -235,7 +253,7 @@ func TestSelectSubqueryInConjunctionPlaceholderNumbering(t *testing.T) {
 		Where("c = ?", 2).
 		PlaceholderFormat(Dollar).
 		ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "SELECT * WHERE (EXISTS( SELECT a WHERE b = $1 )) AND c = $2"
 	assert.Equal(t, expectedSql, sql)
@@ -243,6 +261,7 @@ func TestSelectSubqueryInConjunctionPlaceholderNumbering(t *testing.T) {
 }
 
 func TestSelectSubqueryInSelect(t *testing.T) {
+	t.Parallel()
 	sqlCheckSubQ := Select("gt.entity_task_id ").
 		From("scanner_tasks st ").
 		Join("global_tasks gt ON gt.id = st.global_task_id").
@@ -262,7 +281,7 @@ func TestSelectSubqueryInSelect(t *testing.T) {
 		PlaceholderFormat(Dollar)
 
 	sql, args, err := sqlCheck.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := simplifyString(`
 	SELECT st.id 
@@ -280,12 +299,13 @@ func TestSelectSubqueryInSelect(t *testing.T) {
 	assert.Equal(t, []any{2, 3, 4, 1}, args)
 }
 
-// remove double spaces, tabs, and newlines
+// simplifyString removes double spaces, tabs, and newlines.
 func simplifyString(s string) string {
 	return strings.Join(strings.Fields(s), " ")
 }
 
 func TestSelectJoinClausePlaceholderNumbering(t *testing.T) {
+	t.Parallel()
 	subquery := Select("a").Where(Eq{"b": 2}).PlaceholderFormat(Dollar)
 
 	sql, args, err := Select("t1.a").
@@ -294,7 +314,7 @@ func TestSelectJoinClausePlaceholderNumbering(t *testing.T) {
 		JoinClause(subquery.Prefix("JOIN (").Suffix(") t2 ON (t1.a = t2.a)")).
 		PlaceholderFormat(Dollar).
 		ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "SELECT t1.a FROM t1 JOIN ( SELECT a WHERE b = $1 ) t2 ON (t1.a = t2.a) WHERE a = $2"
 	assert.Equal(t, expectedSql, sql)
@@ -302,56 +322,44 @@ func TestSelectJoinClausePlaceholderNumbering(t *testing.T) {
 }
 
 func ExampleSelect() {
-	Select("id", "created", "first_name").From("users") // ... continue building up your query
-
-	// sql methods in select columns are ok
-	Select("first_name", "count(*)").From("users")
-
-	// column aliases are ok too
-	Select("first_name", "count(*) as n_users").From("users")
+	sql, _, _ := Select("id", "created", "first_name").From("users").ToSql()
+	fmt.Println(sql)
+	// Output: SELECT id, created, first_name FROM users
 }
 
 func ExampleSelectBuilder_From() {
-	Select("id", "created", "first_name").From("users") // ... continue building up your query
+	sql, _, _ := Select("id", "created", "first_name").From("users").ToSql()
+	fmt.Println(sql)
+	// Output: SELECT id, created, first_name FROM users
 }
 
 func ExampleSelectBuilder_Where() {
 	companyId := 20
-	Select("id", "created", "first_name").From("users").Where("company = ?", companyId)
+	sql, _, _ := Select("id", "created", "first_name").From("users").Where("company = ?", companyId).ToSql()
+	fmt.Println(sql)
+	// Output: SELECT id, created, first_name FROM users WHERE company = ?
 }
 
 func ExampleSelectBuilder_Where_helpers() {
 	companyId := 20
 
-	Select("id", "created", "first_name").From("users").Where(Eq{
+	sql, _, _ := Select("id", "created", "first_name").From("users").Where(Eq{
 		"company": companyId,
-	})
-
-	Select("id", "created", "first_name").From("users").Where(GtOrEq{
-		"created": time.Now().AddDate(0, 0, -7),
-	})
-
-	Select("id", "created", "first_name").From("users").Where(And{
-		GtOrEq{
-			"created": time.Now().AddDate(0, 0, -7),
-		},
-		Eq{
-			"company": companyId,
-		},
-	})
+	}).ToSql()
+	fmt.Println(sql)
+	// Output: SELECT id, created, first_name FROM users WHERE company = ?
 }
 
 func ExampleSelectBuilder_Where_multiple() {
 	companyId := 20
 
 	// multiple where's are ok
-
-	Select("id", "created", "first_name").
+	sql, _, _ := Select("id", "created", "first_name").
 		From("users").
 		Where("company = ?", companyId).
-		Where(GtOrEq{
-			"created": time.Now().AddDate(0, 0, -7),
-		})
+		Where(Eq{"active": true}).ToSql()
+	fmt.Println(sql)
+	// Output: SELECT id, created, first_name FROM users WHERE company = ? AND active = ?
 }
 
 func ExampleSelectBuilder_FromSelect() {
@@ -384,16 +392,18 @@ func ExampleSelectBuilder_Columns_order() {
 }
 
 func TestRemoveColumns(t *testing.T) {
+	t.Parallel()
 	query := Select("id").
 		From("users").
 		RemoveColumns()
 	query = query.Columns("name")
 	sql, _, err := query.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT name FROM users", sql)
 }
 
 func TestOrderByCond(t *testing.T) {
+	t.Parallel()
 	columns := map[int]string{
 		1: "id",
 		2: "created",
@@ -405,7 +415,7 @@ func TestOrderByCond(t *testing.T) {
 	}
 
 	sql, args, err := Select("id").From("users").OrderByCond(columns, orderConds).ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT id FROM users ORDER BY id ASC, created DESC", sql)
 	assert.Empty(t, args)
 
@@ -419,45 +429,62 @@ func TestOrderByCond(t *testing.T) {
 			ColumnID:  2,
 			NullsType: OrderNullsLast,
 		}).ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT id FROM users ORDER BY id ASC, created DESC NULLS LAST", sql)
+	assert.Empty(t, args)
+
+	// test with OrderNullsFirst
+	sql, args, err = Select("id").From("users").OrderByCond(columns, orderConds,
+		OrderByCondOption{
+			ColumnID:  1,
+			NullsType: OrderNullsFirst,
+		},
+		OrderByCondOption{
+			ColumnID:  2,
+			NullsType: OrderNullsLast,
+		}).ToSql()
+	require.NoError(t, err)
+	assert.Equal(t, "SELECT id FROM users ORDER BY id ASC NULLS FIRST, created DESC NULLS LAST", sql)
 	assert.Empty(t, args)
 }
 
 func TestSearch(t *testing.T) {
+	t.Parallel()
 	sql, args, err := Select("id", "name").
 		From("users").
 		Search("John", "name", "email").ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT id, name FROM users WHERE (name::text LIKE ? OR email::text LIKE ?)", sql)
 	assert.Equal(t, []any{"%John%", "%John%"}, args)
 
 	sql, args, err = Select("id", "name").
 		From("users").
 		Search(123, "name", "email").ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT id, name FROM users WHERE (name::text LIKE ? OR email::text LIKE ?)", sql)
 	assert.Equal(t, []any{"%123%", "%123%"}, args)
 }
 
 func TestPaginateByID(t *testing.T) {
+	t.Parallel()
 	sql, args, err := Select("id", "name").
 		From("users").
 		PaginateByID(10, 20, "id").
 		OrderBy("id ASC").
 		ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT id, name FROM users WHERE id > ? ORDER BY id ASC LIMIT 10", sql)
 	assert.Equal(t, []any{int64(20)}, args)
 }
 
 func TestPaginateByPage(t *testing.T) {
+	t.Parallel()
 	sql, args, err := Select("id", "name").
 		From("users").
 		PaginateByPage(10, 1).
 		OrderBy("id ASC").
 		ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT id, name FROM users ORDER BY id ASC LIMIT 10", sql)
 	assert.Empty(t, args)
 
@@ -466,16 +493,17 @@ func TestPaginateByPage(t *testing.T) {
 		PaginateByPage(10, 3).
 		OrderBy("id ASC").
 		ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT id, name FROM users ORDER BY id ASC LIMIT 10 OFFSET 20", sql)
 	assert.Empty(t, args)
 }
 
 func TestPaginate(t *testing.T) {
+	t.Parallel()
 	pByID := PaginatorByID(10, 20)
-	assert.Equal(t, pByID.Limit(), uint64(10))
-	assert.Equal(t, pByID.LastID(), int64(20))
-	assert.Equal(t, pByID.Type(), PaginatorTypeByID)
+	assert.Equal(t, uint64(10), pByID.Limit())
+	assert.Equal(t, int64(20), pByID.LastID())
+	assert.Equal(t, PaginatorTypeByID, pByID.Type())
 
 	sql, args, err := Select("id", "name").
 		From("users").
@@ -483,7 +511,7 @@ func TestPaginate(t *testing.T) {
 		OrderBy("id ASC").
 		SetIDColumn("id").
 		ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT id, name FROM users WHERE id > ? ORDER BY id ASC LIMIT 10", sql)
 	assert.Equal(t, []any{int64(20)}, args)
 
@@ -492,11 +520,11 @@ func TestPaginate(t *testing.T) {
 		Paginate(pByID).
 		OrderBy("id ASC").
 		ToSql()
-	assert.ErrorContains(t, err, "IDColumn is required for pagination by ID")
+	require.ErrorContains(t, err, "IDColumn is required for pagination by ID")
 
 	pByPage := PaginatorByPage(10, 2)
-	assert.Equal(t, pByPage.PageSize(), uint64(10))
-	assert.Equal(t, pByPage.PageNumber(), uint64(2))
+	assert.Equal(t, uint64(10), pByPage.PageSize())
+	assert.Equal(t, uint64(2), pByPage.PageNumber())
 
 	sql, args, err = Select("id", "name").
 		From("users").
@@ -504,19 +532,20 @@ func TestPaginate(t *testing.T) {
 		OrderBy("id ASC").
 		ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT id, name FROM users ORDER BY id ASC LIMIT 10 OFFSET 10", sql)
 	assert.Empty(t, args)
 }
 
 func TestTableAlias(t *testing.T) {
+	t.Parallel()
 	sql, _, err := Select().
 		Alias("u").Columns("id", "name").
 		From("users u").
 		Alias("u").GroupBy("id", "name").
 		Alias("u").OrderBy("id").
 		ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT u.id, u.name FROM users u GROUP BY u.id, u.name ORDER BY u.id", sql)
 
 	sql, _, err = Select().
@@ -525,17 +554,18 @@ func TestTableAlias(t *testing.T) {
 		Alias("u", "pref").GroupBy("id", "name").
 		Alias("u", "pref").OrderBy("id").
 		ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT u.id AS pref_id, u.name AS pref_name FROM users u GROUP BY u.id AS pref_id, u.name AS pref_name ORDER BY u.id AS pref_id", sql)
 }
 
 func TestSelectWith(t *testing.T) {
+	t.Parallel()
 	q := Select().
 		With("table1", Select("a").From("table2")).
 		Columns("a").
 		From("table3")
 
 	sql, _, err := q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "WITH table1 AS ( SELECT a FROM table2 ) SELECT a FROM table3", sql)
 }

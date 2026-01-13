@@ -29,7 +29,7 @@ func (p part) ToSql() (sql string, args []any, err error) {
 	return
 }
 
-func nestedToSql(s Sqlizer) (string, []any, error) {
+func nestedToSql(s Sqlizer) (sql string, args []any, err error) {
 	if raw, ok := s.(rawSqlizer); ok {
 		return raw.toSqlRaw()
 	} else {
@@ -42,7 +42,7 @@ func appendToSql(parts []Sqlizer, w io.Writer, sep string, args []any) ([]any, e
 		partSql, partArgs, err := nestedToSql(p)
 		if err != nil {
 			return nil, err
-		} else if len(partSql) == 0 {
+		} else if partSql == "" {
 			continue
 		}
 

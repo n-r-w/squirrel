@@ -31,7 +31,7 @@ func (b StatementBuilderType) Delete(from string) DeleteBuilder {
 	return DeleteBuilder(b).From(from)
 }
 
-// With returns a CommonTableExpressionsBuilder for this StatementBuilderType
+// With returns a CommonTableExpressionsBuilder for this StatementBuilderType.
 func (b StatementBuilderType) With(cte string) CommonTableExpressionsBuilder {
 	return CommonTableExpressionsBuilder(b).Cte(cte)
 }
@@ -49,6 +49,8 @@ func (b StatementBuilderType) Where(pred any, args ...any) StatementBuilderType 
 }
 
 // StatementBuilder is a parent builder for other builders, e.g. SelectBuilder.
+//
+//nolint:gochecknoglobals // common starting point for building statements
 var StatementBuilder = StatementBuilderType(builder.EmptyBuilder).PlaceholderFormat(Question)
 
 // Select returns a new SelectBuilder, optionally setting some result columns.
@@ -87,22 +89,22 @@ func Delete(from string) DeleteBuilder {
 	return StatementBuilder.Delete(from)
 }
 
-// With returns a new CommonTableExpressionsBuilder with the given first cte name
+// With returns a new CommonTableExpressionsBuilder with the given first cte name.
 //
-// See CommonTableExpressionsBuilder.Cte
+// See CommonTableExpressionsBuilder.Cte.
 func With(cte string) CommonTableExpressionsBuilder {
 	return StatementBuilder.With(cte)
 }
 
-// WithRecursive returns a new CommonTableExpressionsBuilder with the RECURSIVE option and the given first cte name
+// WithRecursive returns a new CommonTableExpressionsBuilder with the RECURSIVE option and the given first cte name.
 //
-// See CommonTableExpressionsBuilder.Cte, CommonTableExpressionsBuilder.Recursive
+// See CommonTableExpressionsBuilder.Cte, CommonTableExpressionsBuilder.Recursive.
 func WithRecursive(cte string) CommonTableExpressionsBuilder {
 	return StatementBuilder.With(cte).Recursive(true)
 }
 
-// Case returns a new CaseBuilder
-// "what" represents case value
+// Case returns a new CaseBuilder.
+// "what" represents case value.
 func Case(what ...any) CaseBuilder {
 	b := CaseBuilder(builder.EmptyBuilder)
 

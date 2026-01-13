@@ -4,9 +4,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDeleteBuilderToSql(t *testing.T) {
+	t.Parallel()
 	b := Delete("").
 		Prefix("WITH prefix AS ?", 0).
 		From("a").
@@ -17,7 +19,7 @@ func TestDeleteBuilderToSql(t *testing.T) {
 		Suffix("RETURNING ?", 4)
 
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "WITH prefix AS ? " +
 		"DELETE FROM a WHERE b = ? ORDER BY c LIMIT 2 OFFSET 3 " +
@@ -29,11 +31,13 @@ func TestDeleteBuilderToSql(t *testing.T) {
 }
 
 func TestDeleteBuilderToSqlErr(t *testing.T) {
+	t.Parallel()
 	_, _, err := Delete("").ToSql()
 	assert.Error(t, err)
 }
 
 func TestDeleteBuilderMustSql(t *testing.T) {
+	t.Parallel()
 	defer func() {
 		if r := recover(); r == nil {
 			t.Errorf("TestDeleteBuilderMustSql should have panicked!")
@@ -43,6 +47,7 @@ func TestDeleteBuilderMustSql(t *testing.T) {
 }
 
 func TestDeleteBuilderPlaceholders(t *testing.T) {
+	t.Parallel()
 	b := Delete("test").Where("x = ? AND y = ?", 1, 2)
 
 	sql, _, _ := b.PlaceholderFormat(Question).ToSql()

@@ -1,0 +1,156 @@
+run:
+  timeout: 5m
+  issues-exit-code: 1
+  tests: true
+
+version: 2
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+
+linters:
+  disable-all: true
+  enable:
+    - godot
+    - copyloopvar
+    - gocyclo
+    - misspell
+    - rowserrcheck
+    - staticcheck
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    # - cyclop
+    - dupl
+    - durationcheck
+    - errcheck
+    - errname
+    - errorlint
+    - exhaustive
+    - exhaustruct
+    - forbidigo
+    - gocheckcompilerdirectives
+    - gochecknoglobals
+    - gochecknoinits
+    - gochecksumtype
+    - gocognit
+    - goconst
+    - gocritic
+    - gomoddirectives
+    - gomodguard
+    - goprintffuncname
+    - gosec
+    - govet
+    - ineffassign
+    - lll
+    - loggercheck
+    - makezero
+    - mirror
+    - mnd
+    - musttag
+    - nakedret
+    - nestif
+    - nilerr
+    - nilnil
+    - noctx
+    - nolintlint
+    - nosprintfhostport
+    - perfsprint
+    - prealloc
+    - predeclared
+    - promlinter
+    - protogetter
+    - reassign
+    - revive
+    - sloglint
+    - sqlclosecheck
+    - testableexamples
+    - testifylint
+    - tparallel
+    - unconvert
+    - unparam
+    - unused
+    - usestdlibvars
+    - wastedassign
+    - whitespace
+    - paralleltest
+  settings:
+    revive:
+      rules:
+        - name: var-naming
+          disabled: true
+    govet:
+      check-shadowing: true
+    gocyclo:
+      min-complexity: 15
+    dupl:
+      threshold: 100
+    goconst:
+      min-len: 2
+      min-occurrences: 2
+    misspell:
+      locale: US
+    lll:
+      line-length: 120
+    goimports:
+      local-prefixes: github.com/n-r-w/squirrel
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - experimental
+        - opinionated
+        - performance
+        - style
+      disabled-checks:
+        - dupImport
+        - ifElseChain
+        - octalLiteral
+        - whyNoLint
+        - wrapperFunc
+  exclusions:
+    generated: lax
+    rules:
+      - linters:
+          - perfsprint
+          - dupl
+          - gochecknoglobals
+          - gocognit
+          - goconst
+          - gocritic
+          - gosec
+          - govet
+          - lll
+          - revive
+          - staticcheck
+          - unparam
+          - whitespace
+          - gocyclo
+          - cyclop
+        path: _test\.go
+
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  new: false
+
+severity:
+  default-severity: error
+  case-sensitive: false
+
+formatters:
+  enable:
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - loadtest$
+      - profile$
+      - bench$
