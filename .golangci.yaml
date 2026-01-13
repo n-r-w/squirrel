@@ -1,11 +1,9 @@
-# More info on config here: https://golangci-lint.run/usage/configuration/#config-file
 run:
-  timeout: 1m
+  timeout: 5m
   issues-exit-code: 1
   tests: true
-  skip-dirs:
-  skip-files:
-    - (.+)_mock.go$
+
+version: 2
 
 output:
   format: colored-line-number
@@ -15,20 +13,27 @@ output:
 linters-settings:
   govet:
     check-shadowing: true
+  gocyclo:
+    min-complexity: 15
   dupl:
     threshold: 100
   goconst:
     min-len: 2
     min-occurrences: 2
-  revive:
-    rules:
-      - name: var-naming
-        disabled: true
-  stylecheck:
-    checks: ["all", "-ST1003", "-ST1012"]
+  misspell:
+    locale: US
+  lll:
+    line-length: 120
+  goimports:
+    local-prefixes: github.com/n-r-w/squirrel
+  nolintlint:
+    require-explanation: true
+    require-specific: true
   gocritic:
     enabled-tags:
       - diagnostic
+      - experimental
+      - opinionated
       - performance
       - style
     disabled-checks:
@@ -37,58 +42,113 @@ linters-settings:
       - octalLiteral
       - whyNoLint
       - wrapperFunc
-      - unlabelStmt # false positive
-      - sloppyReassign # quite strange linter, suggests performing "shadows declaration" inside if.
-    settings:
-      # don't forget to run "golangci-lint cache clean" after changes in the .go files below
-      hugeParam:
-        sizeThreshold: 512
-      rangeValCopy:
-        sizeThreshold: 512
 
 linters:
   disable-all: true
   enable:
-    # - dupl - it's very slow, enable if you really know why you need it
+    - godot
+    - copyloopvar
+    - gocyclo
+    - misspell
+    - rowserrcheck
+    - staticcheck
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    # - cyclop
+    - dupl
+    - durationcheck
     - errcheck
-    # - goconst
-    - goimports
+    - errname
+    - errorlint
+    - exhaustive
+    - exhaustruct
+    - forbidigo
+    - gocheckcompilerdirectives
+    - gochecknoglobals
+    - gochecknoinits
+    - gochecksumtype
+    - gocognit
+    - goconst
+    - gocritic
+    - gomoddirectives
+    - gomodguard
+    - goprintffuncname
     - gosec
     - govet
     - ineffassign
-    - megacheck # (staticcheck + gosimple + unused in one linter)
-    - revive
-    - typecheck
-    - unused # will be used insted of varcheck + deadcode + structcheck. More info https://github.com/golangci/golangci-lint/issues/1841
-    # - gocritic
-    # - gocognit
-    - gomnd
+    - lll
+    - loggercheck
+    - makezero
+    - mirror
+    - mnd
+    - musttag
+    - nakedret
+    - nestif
+    - nilerr
+    - nilnil
+    - noctx
+    - nolintlint
+    - nosprintfhostport
+    - perfsprint
     - prealloc
+    - predeclared
+    - promlinter
+    - protogetter
+    - reassign
+    - revive
+    - sloglint
+    - sqlclosecheck
+    - testableexamples
+    - testifylint
+    - tparallel
+    - unconvert
     - unparam
-    - staticcheck
-    # - paralleltest
-    - exhaustive
+    - unused
+    - usestdlibvars
+    - wastedassign
+    - whitespace
+    - paralleltest
 
-issues:
+  exclusions:
+    generated: lax
+    rules:
+      - linters:
+          - perfsprint
+          - dupl
+          - gochecknoglobals
+          - gocognit
+          - goconst
+          - gocritic
+          - gosec
+          - govet
+          - lll
+          - revive
+          - staticcheck
+          - unparam
+          - whitespace
+          - gocyclo
+          - cyclop
+        path: _test\.go
+
   exclude-use-default: false
-  exclude:
-    # _ instead of err checks
-    - G104
-    # for "public interface + private struct implementation" cases only!
-    - exported func .* returns unexported type .*, which can be annoying to use
-    # can be removed in the development phase
-    # - (comment on exported (method|function|type|const)|should have( a package)? comment|comment should be of the form)
-    # not for the active development - can be removed in the stable phase
-    - should have a package comment
-    - don't use an underscore in package name
-    # EXC0001 errcheck: Almost all programs ignore errors on these functions and in most cases it's ok
-    - Error return value of .((os\.)?std(out|err)\..*|.*Close|.*Flush|os\.Remove(All)?|.*print(f|ln)?|os\.(Un)?Setenv). is not checked
-    - should check returned error before deferring
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - gocognit
-        - gocritic
-        - unparam
   max-issues-per-linter: 0
   max-same-issues: 0
+  new: false
+
+severity:
+  default-severity: error
+  case-sensitive: false
+
+formatters:
+  enable:
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - loadtest$
+      - profile$
+      - bench$
