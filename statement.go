@@ -49,6 +49,8 @@ func (b StatementBuilderType) Where(pred any, args ...any) StatementBuilderType 
 }
 
 // StatementBuilder is a parent builder for other builders, e.g. SelectBuilder.
+//
+//nolint:gochecknoglobals // common starting point for building statements
 var StatementBuilder = StatementBuilderType(builder.EmptyBuilder).PlaceholderFormat(Question)
 
 // Select returns a new SelectBuilder, optionally setting some result columns.

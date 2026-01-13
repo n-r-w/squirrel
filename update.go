@@ -136,8 +136,8 @@ func (d *updateData) ToSql() (sqlStr string, args []any, err error) {
 // UpdateBuilder builds SQL UPDATE statements.
 type UpdateBuilder builder.Builder
 
-func init() {
-	builder.Register(UpdateBuilder{}, updateData{})
+func init() { //nolint:gochecknoinits // required to register UpdateBuilder
+	builder.Register(UpdateBuilder{}, updateData{}) //nolint:exhaustruct // empty struct is fine
 }
 
 // Format methods

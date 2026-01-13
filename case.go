@@ -10,8 +10,8 @@ import (
 	"github.com/lann/builder"
 )
 
-func init() {
-	builder.Register(CaseBuilder{}, caseData{})
+func init() { //nolint:gochecknoinits // required to register CaseBuilder
+	builder.Register(CaseBuilder{}, caseData{}) //nolint:exhaustruct // empty struct is fine
 }
 
 // sqlizerBuffer is a helper that allows to write many Sqlizers one by one

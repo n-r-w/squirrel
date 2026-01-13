@@ -18,6 +18,7 @@ type placeholderDebugger interface {
 	debugPlaceholder() string
 }
 
+//nolint:gochecknoglobals // common placeholder formats
 var (
 	// Question is a PlaceholderFormat instance that leaves placeholders as
 	// question marks.

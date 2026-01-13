@@ -88,8 +88,8 @@ func (d *deleteData) ToSql() (sqlStr string, args []any, err error) {
 // DeleteBuilder builds SQL DELETE statements.
 type DeleteBuilder builder.Builder
 
-func init() {
-	builder.Register(DeleteBuilder{}, deleteData{})
+func init() { //nolint:gochecknoinits // required to register DeleteBuilder
+	builder.Register(DeleteBuilder{}, deleteData{}) //nolint:exhaustruct // empty struct is fine
 }
 
 // Format methods

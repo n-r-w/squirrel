@@ -147,8 +147,8 @@ func (d *insertData) appendSelectToSQL(w io.Writer, args []any) ([]any, error) {
 // InsertBuilder builds SQL INSERT statements.
 type InsertBuilder builder.Builder
 
-func init() {
-	builder.Register(InsertBuilder{}, insertData{})
+func init() { //nolint:gochecknoinits // required to register InsertBuilder
+	builder.Register(InsertBuilder{}, insertData{}) //nolint:exhaustruct // empty struct is fine
 }
 
 // Format methods

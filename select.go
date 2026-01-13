@@ -258,8 +258,8 @@ func (d *selectData) toSqlRaw() (sqlStr string, args []any, err error) {
 // SelectBuilder builds SQL SELECT statements.
 type SelectBuilder builder.Builder
 
-func init() {
-	builder.Register(SelectBuilder{}, selectData{})
+func init() { //nolint:gochecknoinits // required to register SelectBuilder
+	builder.Register(SelectBuilder{}, selectData{}) //nolint:exhaustruct // empty struct is fine
 }
 
 // Format methods
