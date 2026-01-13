@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSelectBuilderToSql(t *testing.T) {
@@ -41,7 +42,7 @@ func TestSelectBuilderToSql(t *testing.T) {
 		Suffix("FETCH FIRST ? ROWS ONLY", 14)
 
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "WITH prefix AS ? " +
 		"SELECT DISTINCT a, b, c, IF(d IN (?,?,?), 1, 0) as stat_column, a > ?, " +
@@ -63,7 +64,7 @@ func TestSelectBuilderFromSelect(t *testing.T) {
 	subQ := Select("c").From("d").Where(Eq{"i": 0})
 	b := Select("a", "b").FromSelect(subQ, "subq")
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "SELECT a, b FROM (SELECT c FROM d WHERE i = ?) AS subq"
 	assert.Equal(t, expectedSql, sql)
@@ -123,10 +124,10 @@ func TestSelectBuilderSimpleJoin(t *testing.T) {
 	b := Select("*").From("bar").Join("baz ON bar.foo = baz.foo")
 
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, expectedSql, sql)
-	assert.Equal(t, args, expectedArgs)
+	assert.Equal(t, expectedArgs, args)
 }
 
 func TestSelectBuilderParamJoin(t *testing.T) {
@@ -137,10 +138,10 @@ func TestSelectBuilderParamJoin(t *testing.T) {
 	b := Select("*").From("bar").Join("baz ON bar.foo = baz.foo AND baz.foo = ?", 42)
 
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, expectedSql, sql)
-	assert.Equal(t, args, expectedArgs)
+	assert.Equal(t, expectedArgs, args)
 }
 
 func TestSelectBuilderNestedSelectJoin(t *testing.T) {
@@ -153,17 +154,17 @@ func TestSelectBuilderNestedSelectJoin(t *testing.T) {
 	b := Select("*").From("bar").JoinClause(nestedSelect.Prefix("JOIN (").Suffix(") r ON bar.foo = r.foo"))
 
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, expectedSql, sql)
-	assert.Equal(t, args, expectedArgs)
+	assert.Equal(t, expectedArgs, args)
 }
 
 func TestSelectWithOptions(t *testing.T) {
 	t.Parallel()
 	sql, _, err := Select("*").From("foo").Distinct().Options("SQL_NO_CACHE").ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT DISTINCT SQL_NO_CACHE * FROM foo", sql)
 }
 
@@ -179,7 +180,7 @@ func TestSelectWithRemoveOffset(t *testing.T) {
 	t.Parallel()
 	sql, _, err := Select("*").From("foo").Offset(10).RemoveOffset().ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT * FROM foo", sql)
 }
 
@@ -190,7 +191,7 @@ func TestSelectBuilderNestedSelectDollar(t *testing.T) {
 	outerSql, _, err := StatementBuilder.PlaceholderFormat(Dollar).Select("*").
 		From("foo").Where("x = ?").Where(nestedBuilder).ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT * FROM foo WHERE x = $1 AND NOT EXISTS ( SELECT * FROM bar WHERE y = $2 )", outerSql)
 }
 
@@ -208,21 +209,21 @@ func TestSelectBuilderMustSql(t *testing.T) {
 func TestSelectWithoutWhereClause(t *testing.T) {
 	t.Parallel()
 	sql, _, err := Select("*").From("users").ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT * FROM users", sql)
 }
 
 func TestSelectWithNilWhereClause(t *testing.T) {
 	t.Parallel()
 	sql, _, err := Select("*").From("users").Where(nil).ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT * FROM users", sql)
 }
 
 func TestSelectWithEmptyStringWhereClause(t *testing.T) {
 	t.Parallel()
 	sql, _, err := Select("*").From("users").Where("").ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT * FROM users", sql)
 }
 
@@ -237,7 +238,7 @@ func TestSelectSubqueryPlaceholderNumbering(t *testing.T) {
 		Where("c = ?", 2).
 		PlaceholderFormat(Dollar).
 		ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "WITH a AS ( SELECT a WHERE b = $1 ) SELECT * FROM (SELECT a WHERE b = $2) AS q WHERE c = $3"
 	assert.Equal(t, expectedSql, sql)
@@ -253,7 +254,7 @@ func TestSelectSubqueryInConjunctionPlaceholderNumbering(t *testing.T) {
 		Where("c = ?", 2).
 		PlaceholderFormat(Dollar).
 		ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "SELECT * WHERE (EXISTS( SELECT a WHERE b = $1 )) AND c = $2"
 	assert.Equal(t, expectedSql, sql)
@@ -281,7 +282,7 @@ func TestSelectSubqueryInSelect(t *testing.T) {
 		PlaceholderFormat(Dollar)
 
 	sql, args, err := sqlCheck.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := simplifyString(`
 	SELECT st.id 
@@ -410,7 +411,7 @@ func TestRemoveColumns(t *testing.T) {
 		RemoveColumns()
 	query = query.Columns("name")
 	sql, _, err := query.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT name FROM users", sql)
 }
 
@@ -427,7 +428,7 @@ func TestOrderByCond(t *testing.T) {
 	}
 
 	sql, args, err := Select("id").From("users").OrderByCond(columns, orderConds).ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT id FROM users ORDER BY id ASC, created DESC", sql)
 	assert.Empty(t, args)
 
@@ -441,7 +442,7 @@ func TestOrderByCond(t *testing.T) {
 			ColumnID:  2,
 			NullsType: OrderNullsLast,
 		}).ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT id FROM users ORDER BY id ASC, created DESC NULLS LAST", sql)
 	assert.Empty(t, args)
 }
@@ -451,14 +452,14 @@ func TestSearch(t *testing.T) {
 	sql, args, err := Select("id", "name").
 		From("users").
 		Search("John", "name", "email").ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT id, name FROM users WHERE (name::text LIKE ? OR email::text LIKE ?)", sql)
 	assert.Equal(t, []any{"%John%", "%John%"}, args)
 
 	sql, args, err = Select("id", "name").
 		From("users").
 		Search(123, "name", "email").ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT id, name FROM users WHERE (name::text LIKE ? OR email::text LIKE ?)", sql)
 	assert.Equal(t, []any{"%123%", "%123%"}, args)
 }
@@ -470,7 +471,7 @@ func TestPaginateByID(t *testing.T) {
 		PaginateByID(10, 20, "id").
 		OrderBy("id ASC").
 		ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT id, name FROM users WHERE id > ? ORDER BY id ASC LIMIT 10", sql)
 	assert.Equal(t, []any{int64(20)}, args)
 }
@@ -482,7 +483,7 @@ func TestPaginateByPage(t *testing.T) {
 		PaginateByPage(10, 1).
 		OrderBy("id ASC").
 		ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT id, name FROM users ORDER BY id ASC LIMIT 10", sql)
 	assert.Empty(t, args)
 
@@ -491,7 +492,7 @@ func TestPaginateByPage(t *testing.T) {
 		PaginateByPage(10, 3).
 		OrderBy("id ASC").
 		ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT id, name FROM users ORDER BY id ASC LIMIT 10 OFFSET 20", sql)
 	assert.Empty(t, args)
 }
@@ -499,9 +500,9 @@ func TestPaginateByPage(t *testing.T) {
 func TestPaginate(t *testing.T) {
 	t.Parallel()
 	pByID := PaginatorByID(10, 20)
-	assert.Equal(t, pByID.Limit(), uint64(10))
-	assert.Equal(t, pByID.LastID(), int64(20))
-	assert.Equal(t, pByID.Type(), PaginatorTypeByID)
+	assert.Equal(t, uint64(10), pByID.Limit())
+	assert.Equal(t, int64(20), pByID.LastID())
+	assert.Equal(t, PaginatorTypeByID, pByID.Type())
 
 	sql, args, err := Select("id", "name").
 		From("users").
@@ -521,8 +522,8 @@ func TestPaginate(t *testing.T) {
 	assert.ErrorContains(t, err, "IDColumn is required for pagination by ID")
 
 	pByPage := PaginatorByPage(10, 2)
-	assert.Equal(t, pByPage.PageSize(), uint64(10))
-	assert.Equal(t, pByPage.PageNumber(), uint64(2))
+	assert.Equal(t, uint64(10), pByPage.PageSize())
+	assert.Equal(t, uint64(2), pByPage.PageNumber())
 
 	sql, args, err = Select("id", "name").
 		From("users").
@@ -543,7 +544,7 @@ func TestTableAlias(t *testing.T) {
 		Alias("u").GroupBy("id", "name").
 		Alias("u").OrderBy("id").
 		ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT u.id, u.name FROM users u GROUP BY u.id, u.name ORDER BY u.id", sql)
 
 	sql, _, err = Select().
@@ -552,7 +553,7 @@ func TestTableAlias(t *testing.T) {
 		Alias("u", "pref").GroupBy("id", "name").
 		Alias("u", "pref").OrderBy("id").
 		ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT u.id AS pref_id, u.name AS pref_name FROM users u GROUP BY u.id AS pref_id, u.name AS pref_name ORDER BY u.id AS pref_id", sql)
 }
 
@@ -564,6 +565,6 @@ func TestSelectWith(t *testing.T) {
 		From("table3")
 
 	sql, _, err := q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "WITH table1 AS ( SELECT a FROM table2 ) SELECT a FROM table3", sql)
 }

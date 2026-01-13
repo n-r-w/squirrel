@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDeleteBuilderToSql(t *testing.T) {
@@ -18,7 +19,7 @@ func TestDeleteBuilderToSql(t *testing.T) {
 		Suffix("RETURNING ?", 4)
 
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "WITH prefix AS ? " +
 		"DELETE FROM a WHERE b = ? ORDER BY c LIMIT 2 OFFSET 3 " +

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUpdateBuilderToSql(t *testing.T) {
@@ -23,7 +24,7 @@ func TestUpdateBuilderToSql(t *testing.T) {
 		Suffix("RETURNING ?", 6)
 
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "WITH prefix AS ? " +
 		"UPDATE a SET b = ? + 1, c = ?, " +
@@ -42,10 +43,10 @@ func TestUpdateBuilderToSql(t *testing.T) {
 func TestUpdateBuilderToSqlErr(t *testing.T) {
 	t.Parallel()
 	_, _, err := Update("").Set("x", 1).ToSql()
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	_, _, err = Update("x").ToSql()
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestUpdateBuilderMustSql(t *testing.T) {
@@ -72,7 +73,7 @@ func TestUpdateBuilderPlaceholders(t *testing.T) {
 func TestUpdateBuilderFrom(t *testing.T) {
 	t.Parallel()
 	sql, _, err := Update("employees").Set("sales_count", 100).From("accounts").Where("accounts.name = ?", "ACME").ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "UPDATE employees SET sales_count = ? FROM accounts WHERE accounts.name = ?", sql)
 }
 
@@ -84,7 +85,7 @@ func TestUpdateBuilderFromSelect(t *testing.T) {
 			From("accounts").
 			Where("accounts.name = ?", "ACME"), "subquery").
 		Where("employees.account_id = subquery.id").ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "UPDATE employees " +
 		"SET sales_count = ? " +
@@ -104,7 +105,7 @@ func TestUpdateSetWithNestedSelect_DollarPlaceholderNumberingConflict(t *testing
 		Where("id = ?", 12)
 
 	sql, args, err := q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSQL := "UPDATE t1 SET col = (SELECT max(val) FROM t2 WHERE id = $1) WHERE id = $2"
 	assert.Equal(t, expectedSQL, sql)

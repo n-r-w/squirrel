@@ -30,7 +30,7 @@ func TestWherePartsAppendToSqlErr(t *testing.T) {
 func TestWherePartNil(t *testing.T) {
 	t.Parallel()
 	sql, _, _ := newWherePart(nil).ToSql()
-	assert.Equal(t, "", sql)
+	assert.Empty(t, sql)
 }
 
 func TestWherePartErr(t *testing.T) {

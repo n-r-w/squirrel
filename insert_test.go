@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestInsertBuilderToSql(t *testing.T) {
@@ -18,7 +19,7 @@ func TestInsertBuilderToSql(t *testing.T) {
 		Suffix("RETURNING ?", 5)
 
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSQL := "WITH prefix AS ? " +
 		"INSERT DELAYED IGNORE INTO a (b,c) VALUES (?,?),(?,? + 1) " +
@@ -64,7 +65,7 @@ func TestInsertBuilderSetMap(t *testing.T) {
 	b := Insert("table").SetMap(Eq{"field1": 1, "field2": 2, "field3": 3})
 
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSQL := "INSERT INTO table (field1,field2,field3) VALUES (?,?,?)"
 	assert.Equal(t, expectedSQL, sql)
@@ -79,7 +80,7 @@ func TestInsertBuilderSelect(t *testing.T) {
 	ib := Insert("table2").Columns("field1").Select(sb)
 
 	sql, args, err := ib.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSQL := "INSERT INTO table2 (field1) SELECT field1 FROM table1 WHERE field1 = ?"
 	assert.Equal(t, expectedSQL, sql)
@@ -95,7 +96,7 @@ func TestInsertBuilderReplace(t *testing.T) {
 	expectedSQL := "REPLACE INTO table VALUES (?)"
 
 	sql, _, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, expectedSQL, sql)
 }
@@ -112,7 +113,7 @@ func TestInsertSelect_DollarPlaceholderNumberingConflict(t *testing.T) {
 		Suffix("RETURNING id = ?", 2)
 
 	sql, args, err := q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSQL := "INSERT INTO dst (a) SELECT a FROM src WHERE x = $1 RETURNING id = $2"
 	assert.Equal(t, expectedSQL, sql)
@@ -131,7 +132,7 @@ func TestInsertValuesNestedSelect_DollarPlaceholderNumberingConflict(t *testing.
 		Suffix("RETURNING z = ?", 8)
 
 	sql, args, err := q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSQL := "INSERT INTO t1 (x) VALUES (SELECT y FROM t2 WHERE y = $1) RETURNING z = $2"
 	assert.Equal(t, expectedSQL, sql)

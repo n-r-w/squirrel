@@ -6,13 +6,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConcatExpr(t *testing.T) {
 	t.Parallel()
 	b := ConcatExpr("COALESCE(name,", Expr("CONCAT(?,' ',?)", "f", "l"), ")")
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "COALESCE(name,CONCAT(?,' ',?))"
 	assert.Equal(t, expectedSql, sql)
@@ -25,7 +26,7 @@ func TestConcatExprBadType(t *testing.T) {
 	t.Parallel()
 	b := ConcatExpr("prefix", 123, "suffix")
 	_, _, err := b.ToSql()
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "123 is not")
 }
 
@@ -33,7 +34,7 @@ func TestEqToSql(t *testing.T) {
 	t.Parallel()
 	b := Eq{"id": 1}
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "id = ?"
 	assert.Equal(t, expectedSql, sql)
@@ -45,7 +46,7 @@ func TestEqToSql(t *testing.T) {
 func TestEqEmptyToSql(t *testing.T) {
 	t.Parallel()
 	sql, args, err := Eq{}.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "(1=1)"
 	assert.Equal(t, expectedSql, sql)
@@ -56,7 +57,7 @@ func TestEqInToSql(t *testing.T) {
 	t.Parallel()
 	b := Eq{"id": []int{1, 2, 3}}
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "id IN (?,?,?)"
 	assert.Equal(t, expectedSql, sql)
@@ -69,7 +70,7 @@ func TestNotEqToSql(t *testing.T) {
 	t.Parallel()
 	b := NotEq{"id": 1}
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "id <> ?"
 	assert.Equal(t, expectedSql, sql)
@@ -82,7 +83,7 @@ func TestEqNotInToSql(t *testing.T) {
 	t.Parallel()
 	b := NotEq{"id": []int{1, 2, 3}}
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "id NOT IN (?,?,?)"
 	assert.Equal(t, expectedSql, sql)
@@ -95,7 +96,7 @@ func TestEqInEmptyToSql(t *testing.T) {
 	t.Parallel()
 	b := Eq{"id": []int{}}
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "(1=0)"
 	assert.Equal(t, expectedSql, sql)
@@ -108,7 +109,7 @@ func TestNotEqInEmptyToSql(t *testing.T) {
 	t.Parallel()
 	b := NotEq{"id": []int{}}
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "(1=1)"
 	assert.Equal(t, expectedSql, sql)
@@ -121,7 +122,7 @@ func TestEqBytesToSql(t *testing.T) {
 	t.Parallel()
 	b := Eq{"id": []byte("test")}
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "id = ?"
 	assert.Equal(t, expectedSql, sql)
@@ -134,7 +135,7 @@ func TestLtToSql(t *testing.T) {
 	t.Parallel()
 	b := Lt{"id": 1}
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "id < ?"
 	assert.Equal(t, expectedSql, sql)
@@ -147,7 +148,7 @@ func TestLtOrEqToSql(t *testing.T) {
 	t.Parallel()
 	b := LtOrEq{"id": 1}
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "id <= ?"
 	assert.Equal(t, expectedSql, sql)
@@ -160,7 +161,7 @@ func TestGtToSql(t *testing.T) {
 	t.Parallel()
 	b := Gt{"id": 1}
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "id > ?"
 	assert.Equal(t, expectedSql, sql)
@@ -173,7 +174,7 @@ func TestGtOrEqToSql(t *testing.T) {
 	t.Parallel()
 	b := GtOrEq{"id": 1}
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "id >= ?"
 	assert.Equal(t, expectedSql, sql)
@@ -187,7 +188,7 @@ func TestExprNilToSql(t *testing.T) {
 	var b Sqlizer
 	b = NotEq{"name": nil}
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, args)
 
 	expectedSql := "name IS NOT NULL"
@@ -195,7 +196,7 @@ func TestExprNilToSql(t *testing.T) {
 
 	b = Eq{"name": nil}
 	sql, args, err = b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, args)
 
 	expectedSql = "name IS NULL"
@@ -210,15 +211,15 @@ func TestNullTypeString(t *testing.T) {
 	b = Eq{"name": name}
 	sql, args, err := b.ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, args)
 	assert.Equal(t, "name IS NULL", sql)
 
-	assert.NoError(t, name.Scan("Name"))
+	require.NoError(t, name.Scan("Name"))
 	b = Eq{"name": name}
 	sql, args, err = b.ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []any{"Name"}, args)
 	assert.Equal(t, "name = ?", sql)
 }
@@ -226,19 +227,19 @@ func TestNullTypeString(t *testing.T) {
 func TestNullTypeInt64(t *testing.T) {
 	t.Parallel()
 	var userID dbsql.NullInt64
-	assert.NoError(t, userID.Scan(nil))
+	require.NoError(t, userID.Scan(nil))
 	b := Eq{"user_id": userID}
 	sql, args, err := b.ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, args)
 	assert.Equal(t, "user_id IS NULL", sql)
 
-	assert.NoError(t, userID.Scan(int64(10)))
+	require.NoError(t, userID.Scan(int64(10)))
 	b = Eq{"user_id": userID}
 	sql, args, err = b.ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []any{int64(10)}, args)
 	assert.Equal(t, "user_id = ?", sql)
 }
@@ -249,34 +250,34 @@ func TestNilPointer(t *testing.T) {
 	eq := Eq{"name": name}
 	sql, args, err := eq.ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, args)
 	assert.Equal(t, "name IS NULL", sql)
 
 	neq := NotEq{"name": name}
 	sql, args, err = neq.ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, args)
 	assert.Equal(t, "name IS NOT NULL", sql)
 
 	var ids *[]int = nil
 	eq = Eq{"id": ids}
 	sql, args, err = eq.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, args)
 	assert.Equal(t, "id IS NULL", sql)
 
 	neq = NotEq{"id": ids}
 	sql, args, err = neq.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, args)
 	assert.Equal(t, "id IS NOT NULL", sql)
 
 	var ida *[3]int = nil
 	eq = Eq{"id": ida}
 	sql, args, err = eq.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, args)
 	assert.Equal(t, "id IS NULL", sql)
 
@@ -294,14 +295,14 @@ func TestNotNilPointer(t *testing.T) {
 	eq := Eq{"name": name}
 	sql, args, err := eq.ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []any{"Name"}, args)
 	assert.Equal(t, "name = ?", sql)
 
 	neq := NotEq{"name": name}
 	sql, args, err = neq.ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []any{"Name"}, args)
 	assert.Equal(t, "name <> ?", sql)
 
@@ -309,13 +310,13 @@ func TestNotNilPointer(t *testing.T) {
 	ids := &s
 	eq = Eq{"id": ids}
 	sql, args, err = eq.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []any{1, 2, 3}, args)
 	assert.Equal(t, "id IN (?,?,?)", sql)
 
 	neq = NotEq{"id": ids}
 	sql, args, err = neq.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []any{1, 2, 3}, args)
 	assert.Equal(t, "id NOT IN (?,?,?)", sql)
 
@@ -323,7 +324,7 @@ func TestNotNilPointer(t *testing.T) {
 	ida := &a
 	eq = Eq{"id": ida}
 	sql, args, err = eq.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []any{1, 2, 3}, args)
 	assert.Equal(t, "id IN (?,?,?)", sql)
 
@@ -337,7 +338,7 @@ func TestNotNilPointer(t *testing.T) {
 func TestEmptyAndToSql(t *testing.T) {
 	t.Parallel()
 	sql, args, err := And{}.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "(1=1)"
 	assert.Equal(t, expectedSql, sql)
@@ -349,7 +350,7 @@ func TestEmptyAndToSql(t *testing.T) {
 func TestEmptyOrToSql(t *testing.T) {
 	t.Parallel()
 	sql, args, err := Or{}.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "(1=0)"
 	assert.Equal(t, expectedSql, sql)
@@ -362,7 +363,7 @@ func TestLikeToSql(t *testing.T) {
 	t.Parallel()
 	b := Like{"name": "%irrel"}
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "name LIKE ?"
 	assert.Equal(t, expectedSql, sql)
@@ -375,7 +376,7 @@ func TestNotLikeToSql(t *testing.T) {
 	t.Parallel()
 	b := NotLike{"name": "%irrel"}
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "name NOT LIKE ?"
 	assert.Equal(t, expectedSql, sql)
@@ -388,7 +389,7 @@ func TestILikeToSql(t *testing.T) {
 	t.Parallel()
 	b := ILike{"name": "sq%"}
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "name ILIKE ?"
 	assert.Equal(t, expectedSql, sql)
@@ -414,7 +415,7 @@ func TestSqlEqOrder(t *testing.T) {
 	t.Parallel()
 	b := Eq{"a": 1, "b": 2, "c": 3}
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "a = ? AND b = ? AND c = ?"
 	assert.Equal(t, expectedSql, sql)
@@ -427,7 +428,7 @@ func TestSqlLtOrder(t *testing.T) {
 	t.Parallel()
 	b := Lt{"a": 1, "b": 2, "c": 3}
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "a < ? AND b < ? AND c < ?"
 	assert.Equal(t, expectedSql, sql)
@@ -440,7 +441,7 @@ func TestExprEscaped(t *testing.T) {
 	t.Parallel()
 	b := Expr("count(??)", Expr("x"))
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "count(??)"
 	assert.Equal(t, expectedSql, sql)
@@ -454,7 +455,7 @@ func TestExprRecursion(t *testing.T) {
 	{
 		b := Expr("count(?)", Expr("nullif(a,?)", "b"))
 		sql, args, err := b.ToSql()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		expectedSql := "count(nullif(a,?))"
 		assert.Equal(t, expectedSql, sql)
@@ -465,7 +466,7 @@ func TestExprRecursion(t *testing.T) {
 	{
 		b := Expr("extract(? from ?)", Expr("epoch"), "2001-02-03")
 		sql, args, err := b.ToSql()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		expectedSql := "extract(epoch from ?)"
 		assert.Equal(t, expectedSql, sql)
@@ -476,7 +477,7 @@ func TestExprRecursion(t *testing.T) {
 	{
 		b := Expr("JOIN t1 ON ?", And{Eq{"id": 1}, Expr("NOT c1"), Expr("? @@ ?", "x", "y")})
 		sql, args, err := b.ToSql()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		expectedSql := "JOIN t1 ON (id = ? AND NOT c1 AND ? @@ ?)"
 		assert.Equal(t, expectedSql, sql)
@@ -495,43 +496,43 @@ func TestAggr(t *testing.T) {
 
 	// SUM
 	sql, args, err := Sum(subQuery).ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SUM("+expectedSql+")", sql)
 	assert.Equal(t, expectedArgs, args)
 
 	// AVG
 	sql, args, err = Avg(subQuery).ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "AVG("+expectedSql+")", sql)
 	assert.Equal(t, expectedArgs, args)
 
 	// MAX
 	sql, args, err = Max(subQuery).ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "MAX("+expectedSql+")", sql)
 	assert.Equal(t, expectedArgs, args)
 
 	// MIN
 	sql, args, err = Min(subQuery).ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "MIN("+expectedSql+")", sql)
 	assert.Equal(t, expectedArgs, args)
 
 	// COUNT
 	sql, args, err = Count(subQuery).ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "COUNT("+expectedSql+")", sql)
 	assert.Equal(t, expectedArgs, args)
 
 	// EXISTS
 	sql, args, err = Exists(subQuery).ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "EXISTS ("+expectedSql+")", sql)
 	assert.Equal(t, expectedArgs, args)
 
 	// NOT EXISTS
 	sql, args, err = NotExists(subQuery).ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "NOT EXISTS ("+expectedSql+")", sql)
 	assert.Equal(t, expectedArgs, args)
 }
@@ -547,7 +548,7 @@ func TestEqual(t *testing.T) {
 				2),
 		)
 	sql, args, err := q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedArgs := []any{2}
 	assert.Equal(t, expectedArgs, args)
@@ -567,7 +568,7 @@ func TestNotEqual(t *testing.T) {
 				2),
 		)
 	sql, args, err := q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedArgs := []any{2}
 	assert.Equal(t, expectedArgs, args)
@@ -587,7 +588,7 @@ func TestGreater(t *testing.T) {
 				2),
 		)
 	sql, args, err := q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedArgs := []any{2}
 	assert.Equal(t, expectedArgs, args)
@@ -607,7 +608,7 @@ func TestGreaterOrEqual(t *testing.T) {
 				2),
 		)
 	sql, args, err := q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedArgs := []any{2}
 	assert.Equal(t, expectedArgs, args)
@@ -627,7 +628,7 @@ func TestLess(t *testing.T) {
 				2),
 		)
 	sql, args, err := q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedArgs := []any{2}
 	assert.Equal(t, expectedArgs, args)
@@ -647,7 +648,7 @@ func TestLessOrEqual(t *testing.T) {
 				2),
 		)
 	sql, args, err := q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedArgs := []any{2}
 	assert.Equal(t, expectedArgs, args)
@@ -673,7 +674,7 @@ func TestIn(t *testing.T) {
 			In("id6", []bool{true, false}),
 			In("id7", 1),
 		}).ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, fmt.Sprintf(
 		"SELECT id FROM users WHERE (id1 IN (%s) AND id2=ANY(?) AND id4=? AND id5=ANY(?) AND id6=ANY(?) AND id7=?)",
 		expectedSql), sql)
@@ -697,7 +698,7 @@ func TestIn(t *testing.T) {
 			NotIn("id6", []bool{true, false}),
 			NotIn("id7", 1),
 		}).ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, fmt.Sprintf(
 		"SELECT id FROM users WHERE (id1 NOT IN (%s) AND id2<>ALL(?) AND id4<>ALL(?) AND id5<>ALL(?) AND id6<>ALL(?) AND id7<>?)",
 		expectedSql), sql)
@@ -729,8 +730,8 @@ func Test_Range(t *testing.T) {
 	assert.Equal(t, []any{10}, args)
 
 	sql, args, err = Range("id", nil, nil).ToSql()
-	assert.NoError(t, err)
-	assert.Equal(t, "", sql)
+	require.NoError(t, err)
+	assert.Empty(t, sql)
 	assert.Empty(t, args)
 }
 
@@ -744,7 +745,7 @@ func Test_EqNotEmpty(t *testing.T) {
 		"col5": []int{2, 0, 3},
 		"col6": []any{0, 0},
 	}.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "col1 = ? AND col5 IN (?,?)", sql)
 	assert.Equal(t, []any{1, 2, 3}, args)
 }
@@ -760,7 +761,7 @@ func TestNotExprToSql(t *testing.T) {
 	e := Eq{"id": 1}
 	n := Not(e)
 	sql, args, err := n.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "NOT (id = ?)"
 	assert.Equal(t, expectedSql, sql)
@@ -774,7 +775,7 @@ func TestNotExprNestedToSql(t *testing.T) {
 	e := Eq{"id": 1}
 	n := Not(Not(e))
 	sql, args, err := n.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "id = ?"
 	assert.Equal(t, expectedSql, sql)
@@ -789,7 +790,7 @@ func TestCoalesceToSql(t *testing.T) {
 		Select("col1").From("table1"),
 		Select("col2").From("table2"))
 	sql, args, err := b.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "COALESCE((SELECT col1 FROM table1), (SELECT col2 FROM table2), ?)"
 	assert.Equal(t, expectedSql, sql)
@@ -805,13 +806,13 @@ func TestExistsAndNotExistsNestedSelect_DollarPlaceholderNumbering(t *testing.T)
 	inner := sb.Select("1").From("s").Where("a = ?", 10)
 	q1 := sb.Select("1").From("t").Where(Exists(inner)).Where("b = ?", 20)
 	sql, args, err := q1.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT 1 FROM t WHERE EXISTS (SELECT 1 FROM s WHERE a = $1) AND b = $2", sql)
 	assert.Equal(t, []any{10, 20}, args)
 
 	q2 := sb.Select("1").From("t").Where(NotExists(inner)).Where("b = ?", 20)
 	sql, args, err = q2.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT 1 FROM t WHERE NOT EXISTS (SELECT 1 FROM s WHERE a = $1) AND b = $2", sql)
 	assert.Equal(t, []any{10, 20}, args)
 }
@@ -827,7 +828,7 @@ func TestCoalesceNestedSelect_DollarPlaceholderNumbering(t *testing.T) {
 	q := sb.Select("id").Column(co).From("t").Where("z = ?", 30)
 
 	sql, args, err := q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT id, COALESCE((SELECT x FROM a WHERE a.c = $1), (SELECT y FROM b WHERE b.d = $2), $3) FROM t WHERE z = $4", sql)
 	assert.Equal(t, []any{10, 20, "fallback", 30}, args)
 }
@@ -840,21 +841,21 @@ func TestAggrNestedSelect_DollarPlaceholderNumbering(t *testing.T) {
 	// SUM
 	q := sb.Select("id").Column(Sum(inner)).From("t").Where("b = ?", 22)
 	sql, args, err := q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT id, SUM(SELECT x FROM a WHERE a.c = $1) FROM t WHERE b = $2", sql)
 	assert.Equal(t, []any{11, 22}, args)
 
 	// COUNT
 	q = sb.Select("id").Column(Count(inner)).From("t").Where("b = ?", 22)
 	sql, args, err = q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT id, COUNT(SELECT x FROM a WHERE a.c = $1) FROM t WHERE b = $2", sql)
 	assert.Equal(t, []any{11, 22}, args)
 
 	// MIN
 	q = sb.Select("id").Column(Min(inner)).From("t").Where("b = ?", 22)
 	sql, args, err = q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT id, MIN(SELECT x FROM a WHERE a.c = $1) FROM t WHERE b = $2", sql)
 	assert.Equal(t, []any{11, 22}, args)
 
@@ -881,35 +882,35 @@ func TestComparisonsNestedSelect_DollarPlaceholderNumbering(t *testing.T) {
 	// =
 	q := sb.Select("1").From("t1").Where(Equal(inner, 5)).Where("x = ?", 9)
 	sql, args, err := q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT 1 FROM t1 WHERE (SELECT v FROM t2 WHERE w = $1) = $2 AND x = $3", sql)
 	assert.Equal(t, []any{7, 5, 9}, args)
 
 	// <>
 	q = sb.Select("1").From("t1").Where(NotEqual(inner, 5)).Where("x = ?", 9)
 	sql, args, err = q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT 1 FROM t1 WHERE (SELECT v FROM t2 WHERE w = $1) <> $2 AND x = $3", sql)
 	assert.Equal(t, []any{7, 5, 9}, args)
 
 	// >
 	q = sb.Select("1").From("t1").Where(Greater(inner, 5)).Where("x = ?", 9)
 	sql, args, err = q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT 1 FROM t1 WHERE (SELECT v FROM t2 WHERE w = $1) > $2 AND x = $3", sql)
 	assert.Equal(t, []any{7, 5, 9}, args)
 
 	// >=
 	q = sb.Select("1").From("t1").Where(GreaterOrEqual(inner, 5)).Where("x = ?", 9)
 	sql, args, err = q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT 1 FROM t1 WHERE (SELECT v FROM t2 WHERE w = $1) >= $2 AND x = $3", sql)
 	assert.Equal(t, []any{7, 5, 9}, args)
 
 	// <
 	q = sb.Select("1").From("t1").Where(Less(inner, 5)).Where("x = ?", 9)
 	sql, args, err = q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT 1 FROM t1 WHERE (SELECT v FROM t2 WHERE w = $1) < $2 AND x = $3", sql)
 	assert.Equal(t, []any{7, 5, 9}, args)
 
@@ -928,13 +929,13 @@ func TestInNotInNestedSelect_DollarPlaceholderNumbering(t *testing.T) {
 
 	q := sb.Select("1").From("t").Where(In("x", inner)).Where("y = ?", 20)
 	sql, args, err := q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT 1 FROM t WHERE x IN (SELECT id FROM ids WHERE k = $1) AND y = $2", sql)
 	assert.Equal(t, []any{10, 20}, args)
 
 	q = sb.Select("1").From("t").Where(NotIn("x", inner)).Where("y = ?", 20)
 	sql, args, err = q.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "SELECT 1 FROM t WHERE x NOT IN (SELECT id FROM ids WHERE k = $1) AND y = $2", sql)
 	assert.Equal(t, []any{10, 20}, args)
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCaseWithVal(t *testing.T) {
@@ -20,7 +21,7 @@ func TestCaseWithVal(t *testing.T) {
 		From("table")
 	sql, args, err := qb.ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "SELECT CASE number " +
 		"WHEN 1 THEN CAST(? AS text) " +
@@ -44,7 +45,7 @@ func TestCaseWithComplexVal(t *testing.T) {
 		From("table")
 	sql, args, err := qb.ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "SELECT (CASE ? > ? " +
 		"WHEN true THEN CAST(? AS text) " +
@@ -65,7 +66,7 @@ func TestCaseWithNoVal(t *testing.T) {
 	qb := Select().Column(caseStmt).From("table")
 	sql, args, err := qb.ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "SELECT CASE " +
 		"WHEN x = ? THEN x is zero " +
@@ -92,7 +93,7 @@ func TestCaseWithExpr(t *testing.T) {
 	qb := Select().Column(caseStmt).From("table")
 	sql, args, err := qb.ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "SELECT CASE x = ? " +
 		"WHEN 1 > 0 THEN ?::text " +
@@ -134,7 +135,7 @@ func TestMultipleCase(t *testing.T) {
 
 	sql, args, err := qb.ToSql()
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "SELECT " +
 		"(CASE x = ? WHEN true THEN ? ELSE ? END) AS case_noval, " +
@@ -159,7 +160,7 @@ func TestCaseWithNoWhenClause(t *testing.T) {
 
 	_, _, err := qb.ToSql()
 
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	assert.Equal(t, "case expression must contain at lease one WHEN clause", err.Error())
 }
@@ -185,7 +186,7 @@ func TestCaseNull(t *testing.T) {
 		From("table")
 
 	sql, args, err := qb.ToSql()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	expectedSql := "SELECT CASE " +
 		"WHEN 1 THEN ? " +
