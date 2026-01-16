@@ -91,6 +91,10 @@ SELECT * FROM nodes WHERE meta->'format' ?| array[$1,$2]
 
 ## Breaking changes in comparison to the original [github.com/Masterminds/squirrel](https://github.com/Masterminds/squirrel)
 
+### Go version requirement
+
+Requires Go 1.23.8 or newer.
+
 ### Removed all database interaction methods. Only query building functions are left
 
 Squirrel is now a pure SQL query builder. For database interaction, use:
