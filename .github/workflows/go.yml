@@ -47,7 +47,7 @@ jobs:
       - name: Test
         env:
           TESTDOCK_DSN_POSTGRES: postgres://postgres:secret@localhost:5432/postgres?sslmode=disable
-        run: go test -race -tags -v ./...
+        run: go test -race -tags itest -v ./...
 
       - name: Update coverage report
         uses: ncruces/go-coverage-report@v0
