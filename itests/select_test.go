@@ -381,45 +381,41 @@ INSERT INTO user_groups_all (user_id, group_id) VALUES
 		avgAmount     float64
 	}
 
-	results := make([]selectResult, 0)
-	for rows.Next() {
-		var row selectResult
-		err := rows.Scan(
-			&row.prefID,
-			&row.prefName,
-			&row.displayName,
-			&row.emailLabel,
-			&row.statusRank,
-			&row.hasRefunds,
-			&row.noChargebacks,
-			&row.sumAmount,
-			&row.ordersCount,
-			&row.minAmount,
-			&row.maxAmount,
-			&row.avgAmount,
-		)
-		require.NoError(t, err)
-		results = append(results, row)
-	}
+	require.True(t, rows.Next())
+
+	var got selectResult
+	err = rows.Scan(
+		&got.prefID,
+		&got.prefName,
+		&got.displayName,
+		&got.emailLabel,
+		&got.statusRank,
+		&got.hasRefunds,
+		&got.noChargebacks,
+		&got.sumAmount,
+		&got.ordersCount,
+		&got.minAmount,
+		&got.maxAmount,
+		&got.avgAmount,
+	)
+	require.NoError(t, err)
+	require.False(t, rows.Next())
 	require.NoError(t, rows.Err())
 
-	require.Len(t, results, 1)
+	assert.Equal(t, int64(1), got.prefID)
+	assert.Equal(t, "Alice", got.prefName)
+	assert.Equal(t, "Alice <alice@example.com>", got.displayName)
+	assert.Equal(t, "alice@work.com", got.emailLabel)
+	assert.Equal(t, 1, got.statusRank)
+	assert.True(t, got.hasRefunds)
+	assert.True(t, got.noChargebacks)
+	assert.InEpsilon(t, 120.0, got.sumAmount, 0.0001)
+	assert.Equal(t, int64(2), got.ordersCount)
+	assert.InEpsilon(t, 20.0, got.minAmount, 0.0001)
+	assert.InEpsilon(t, 100.0, got.maxAmount, 0.0001)
+	assert.InEpsilon(t, 60.0, got.avgAmount, 0.0001)
 
-	assert.Equal(t, int64(1), results[0].prefID)
-	assert.Equal(t, "Alice", results[0].prefName)
-	assert.Equal(t, "Alice <alice@example.com>", results[0].displayName)
-	assert.Equal(t, "alice@work.com", results[0].emailLabel)
-	assert.Equal(t, 1, results[0].statusRank)
-	assert.True(t, results[0].hasRefunds)
-	assert.True(t, results[0].noChargebacks)
-	assert.InEpsilon(t, 120.0, results[0].sumAmount, 0.0001)
-	assert.Equal(t, int64(2), results[0].ordersCount)
-	assert.InEpsilon(t, 20.0, results[0].minAmount, 0.0001)
-	assert.InEpsilon(t, 100.0, results[0].maxAmount, 0.0001)
-	assert.InEpsilon(t, 60.0, results[0].avgAmount, 0.0001)
-
-
-	cleanupQuery := sq.Select("id").
+	builderResetQuery := sq.Select("id").
 		Distinct().
 		FromSelect(activeUsers, "au").
 		RemoveColumns().
@@ -432,23 +428,8 @@ INSERT INTO user_groups_all (user_id, group_id) VALUES
 		Prefix("/* cleanup */").
 		PlaceholderFormat(sq.Dollar)
 
-	sql, args, err = cleanupQuery.ToSql()
-	require.NoError(t, err)
-
-	rows, err = pool.Query(ctx, sql, args...)
-	require.NoError(t, err)
-	t.Cleanup(rows.Close)
-
-	cleaned := make([]int64, 0)
-	for rows.Next() {
-		var id int64
-		var name string
-		err := rows.Scan(&id, &name)
-		require.NoError(t, err)
-		cleaned = append(cleaned, id)
-	}
-	require.NoError(t, rows.Err())
-	assert.Len(t, cleaned, 4)
+	cleanedIDs, _ := queryInt64StringPairs(t, pool, ctx, builderResetQuery)
+	assert.Len(t, cleanedIDs, 4)
 
 	paginateByID := sq.Select("id").
 		From("users_all").
@@ -456,21 +437,7 @@ INSERT INTO user_groups_all (user_id, group_id) VALUES
 		PaginateByID(2, 1, "id").
 		PlaceholderFormat(sq.Dollar)
 
-	sql, args, err = paginateByID.ToSql()
-	require.NoError(t, err)
-
-	rows, err = pool.Query(ctx, sql, args...)
-	require.NoError(t, err)
-	t.Cleanup(rows.Close)
-
-	pageByID := make([]int64, 0)
-	for rows.Next() {
-		var id int64
-		err := rows.Scan(&id)
-		require.NoError(t, err)
-		pageByID = append(pageByID, id)
-	}
-	require.NoError(t, rows.Err())
+	pageByID := queryInt64s(t, pool, ctx, paginateByID)
 	assert.Equal(t, []int64{2, 3}, pageByID)
 
 	paginateByPage := sq.Select("id").
@@ -479,21 +446,7 @@ INSERT INTO user_groups_all (user_id, group_id) VALUES
 		PaginateByPage(2, 2).
 		PlaceholderFormat(sq.Dollar)
 
-	sql, args, err = paginateByPage.ToSql()
-	require.NoError(t, err)
-
-	rows, err = pool.Query(ctx, sql, args...)
-	require.NoError(t, err)
-	t.Cleanup(rows.Close)
-
-	pageByPage := make([]int64, 0)
-	for rows.Next() {
-		var id int64
-		err := rows.Scan(&id)
-		require.NoError(t, err)
-		pageByPage = append(pageByPage, id)
-	}
-	require.NoError(t, rows.Err())
+	pageByPage := queryInt64s(t, pool, ctx, paginateByPage)
 	assert.Equal(t, []int64{3, 4}, pageByPage)
 
 	paginateByPaginator := sq.Select("id").
@@ -503,21 +456,7 @@ INSERT INTO user_groups_all (user_id, group_id) VALUES
 		SetIDColumn("id").
 		PlaceholderFormat(sq.Dollar)
 
-	sql, args, err = paginateByPaginator.ToSql()
-	require.NoError(t, err)
-
-	rows, err = pool.Query(ctx, sql, args...)
-	require.NoError(t, err)
-	t.Cleanup(rows.Close)
-
-	pageByPaginator := make([]int64, 0)
-	for rows.Next() {
-		var id int64
-		err := rows.Scan(&id)
-		require.NoError(t, err)
-		pageByPaginator = append(pageByPaginator, id)
-	}
-	require.NoError(t, rows.Err())
+	pageByPaginator := queryInt64s(t, pool, ctx, paginateByPaginator)
 	assert.Equal(t, []int64{2, 3}, pageByPaginator)
 
 	paginateByPagePaginator := sq.Select("id").
@@ -526,21 +465,7 @@ INSERT INTO user_groups_all (user_id, group_id) VALUES
 		Paginate(sq.PaginatorByPage(2, 2)).
 		PlaceholderFormat(sq.Dollar)
 
-	sql, args, err = paginateByPagePaginator.ToSql()
-	require.NoError(t, err)
-
-	rows, err = pool.Query(ctx, sql, args...)
-	require.NoError(t, err)
-	t.Cleanup(rows.Close)
-
-	pageByPagePaginator := make([]int64, 0)
-	for rows.Next() {
-		var id int64
-		err := rows.Scan(&id)
-		require.NoError(t, err)
-		pageByPagePaginator = append(pageByPagePaginator, id)
-	}
-	require.NoError(t, rows.Err())
+	pageByPagePaginator := queryInt64s(t, pool, ctx, paginateByPagePaginator)
 	assert.Equal(t, []int64{3, 4}, pageByPagePaginator)
 
 	recursiveQuery := sq.WithRecursive("category_tree").As(
@@ -552,24 +477,7 @@ INSERT INTO user_groups_all (user_id, group_id) VALUES
 			From("category_tree"),
 	).PlaceholderFormat(sq.Dollar)
 
-	sql, args, err = recursiveQuery.ToSql()
-	require.NoError(t, err)
-
-	rows, err = pool.Query(ctx, sql, args...)
-	require.NoError(t, err)
-	t.Cleanup(rows.Close)
-
-	recursiveIDs := make([]int64, 0)
-	recursiveNames := make([]string, 0)
-	for rows.Next() {
-		var id int64
-		var name string
-		err := rows.Scan(&id, &name)
-		require.NoError(t, err)
-		recursiveIDs = append(recursiveIDs, id)
-		recursiveNames = append(recursiveNames, name)
-	}
-	require.NoError(t, rows.Err())
+	recursiveIDs, recursiveNames := queryInt64StringPairs(t, pool, ctx, recursiveQuery)
 	assert.Equal(t, []int64{1}, recursiveIDs)
 	assert.Equal(t, []string{"Engineering"}, recursiveNames)
 }
