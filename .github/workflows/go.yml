@@ -2,6 +2,9 @@
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
 
 name: Go
+permissions:
+  contents: read
+  pull-requests: write
 
 on:
   push:
@@ -12,25 +15,48 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+
+    services:
+      postgres_srv:
+        image: postgres:18.1
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: secret
+          POSTGRES_DB: postgres
+
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres" 
+          --health-interval 10s 
+          --health-timeout 5s 
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v6
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v6.2.0
         with:
-          go-version: "1.18"
+          go-version: "1.23.8"
 
       - name: Build
         run: go build -v ./...
 
       - name: Test
-        run: go test -v ./...
+        env:
+          TESTDOCK_DSN_POSTGRES: postgres://postgres:secret@localhost:5432/postgres?sslmode=disable
+        run: go test -race -tags itest -v ./...
 
       - name: Update coverage report
-        uses: ncruces/go-coverage-report@v0
+        uses: ncruces/go-coverage-report@v0.3.2
         with:
           report: true
           chart: true
           amend: true
+        continue-on-error: true
+
+      - name: Update goreportcard
+        uses: creekorful/goreportcard-action@v1.0
         continue-on-error: true

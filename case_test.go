@@ -225,7 +225,6 @@ func TestSqlTypeNameHelper(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t1 *testing.T) {
 			t1.Parallel()
 			got, err := sqlTypeNameHelper(tt.arg)

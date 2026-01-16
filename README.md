@@ -91,6 +91,10 @@ SELECT * FROM nodes WHERE meta->'format' ?| array[$1,$2]
 
 ## Breaking changes in comparison to the original [github.com/Masterminds/squirrel](https://github.com/Masterminds/squirrel)
 
+### Go version requirement
+
+Requires Go 1.23.8 or newer.
+
 ### Removed all database interaction methods. Only query building functions are left
 
 Squirrel is now a pure SQL query builder. For database interaction, use:
@@ -184,7 +188,7 @@ sq.Range("id", nil, 10) // id <= 10
 ### EqNotEmpty function: ignores empty and zero values in Eq map. Useful for filtering
 
 ```go
-EqNotEmpty{"id1": 1, "name": nil, id2: 0, "desc": ""} // id1 = 1
+EqNotEmpty{"id1": 1, "name": nil, "id2": 0, "desc": ""} // id1 = 1
 ```
 
 ### OrderByCond function: can be used to avoid hardcoding column names in the code
