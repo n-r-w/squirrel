@@ -3,6 +3,7 @@ module github.com/n-r-w/squirrel
 go 1.23.8
 
 require (
+	github.com/georgysavva/scany/v2 v2.1.4
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0
 	github.com/n-r-w/testdock/v2 v2.3.1
@@ -43,7 +44,7 @@ require (
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect
-	github.com/opencontainers/runc v1.3.0 // indirect
+	github.com/opencontainers/runc v1.3.3 // indirect
 	github.com/ory/dockertest/v3 v3.12.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pressly/goose/v3 v3.26.0 // indirect

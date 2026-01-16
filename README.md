@@ -101,7 +101,7 @@ Squirrel is now a pure SQL query builder. For database interaction, use:
 
 - Sqlizer.ToSql() to get the SQL query and arguments.
 - `database/sql`, <https://github.com/jackc/pgx>, etc. for executing queries.
-- <https://github.com/georgysavva/scany> for scanning rows into structs.
+- <https://github.com/georgysavva/scany> for scanning rows into structs. For examples see [integration tests](./itests).
 
 ### Changes in the `Case` method
 
