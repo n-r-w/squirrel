@@ -3,6 +3,7 @@ module github.com/n-r-w/squirrel
 go 1.23.8
 
 require (
+	github.com/georgysavva/scany/v2 v2.1.4
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0
 	github.com/n-r-w/testdock/v2 v2.3.1

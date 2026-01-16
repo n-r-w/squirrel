@@ -5,6 +5,7 @@ package itests
 import (
 	"testing"
 
+	"github.com/georgysavva/scany/v2/pgxscan"
 	sq "github.com/n-r-w/squirrel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -48,21 +49,21 @@ CREATE TABLE archived_products (
 	sql, args, err := insertProducts.ToSql()
 	require.NoError(t, err)
 
-	rows, err := pool.Query(ctx, sql, args...)
-	require.NoError(t, err)
-	t.Cleanup(rows.Close)
-
-	productIDs := make(map[string]int64)
-	for rows.Next() {
-		var id int64
-		var name string
-		var stock int
-		err := rows.Scan(&id, &name, &stock)
-		require.NoError(t, err)
-		productIDs[name] = id
+	type productRow struct {
+		ID    int64  `db:"id"`
+		Name  string `db:"name"`
+		Stock int    `db:"stock"`
 	}
-	require.NoError(t, rows.Err())
-	require.Len(t, productIDs, 3)
+
+	var products []productRow
+	err = pgxscan.Select(ctx, pool, &products, sql, args...)
+	require.NoError(t, err)
+	require.Len(t, products, 3)
+
+	productIDs := make(map[string]int64, len(products))
+	for _, product := range products {
+		productIDs[product.Name] = product.ID
+	}
 
 	insertSales := sq.Insert("sales").
 		Columns("product_id", "qty").
@@ -92,19 +93,19 @@ CREATE TABLE archived_products (
 	sql, args, err = updateQuery.ToSql()
 	require.NoError(t, err)
 
-	rows, err = pool.Query(ctx, sql, args...)
-	require.NoError(t, err)
-	t.Cleanup(rows.Close)
-
-	updated := make(map[int64]int)
-	for rows.Next() {
-		var id int64
-		var stock int
-		err := rows.Scan(&id, &stock)
-		require.NoError(t, err)
-		updated[id] = stock
+	type updatedRow struct {
+		ID    int64 `db:"id"`
+		Stock int   `db:"stock"`
 	}
-	require.NoError(t, rows.Err())
+
+	var updates []updatedRow
+	err = pgxscan.Select(ctx, pool, &updates, sql, args...)
+	require.NoError(t, err)
+
+	updated := make(map[int64]int, len(updates))
+	for _, update := range updates {
+		updated[update.ID] = update.Stock
+	}
 	assert.Len(t, updated, 2)
 
 	assert.Equal(t, 4, updated[productIDs["Widget"]])
@@ -129,7 +130,7 @@ CREATE TABLE archived_products (
 	require.NoError(t, err)
 
 	var archivedCount int
-	err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM archived_products").Scan(&archivedCount)
+	err = pgxscan.Get(ctx, pool, &archivedCount, "SELECT COUNT(*) FROM archived_products")
 	require.NoError(t, err)
 	assert.Equal(t, 1, archivedCount)
 
@@ -148,13 +149,13 @@ CREATE TABLE archived_products (
 	require.NoError(t, err)
 
 	var deletedID int64
-	err = pool.QueryRow(ctx, sql, args...).Scan(&deletedID)
+	err = pgxscan.Get(ctx, pool, &deletedID, sql, args...)
 	require.NoError(t, err)
 
 	assert.Equal(t, productIDs["Legacy"], deletedID)
 
 	var remaining int
-	err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM products WHERE id = $1", deletedID).Scan(&remaining)
+	err = pgxscan.Get(ctx, pool, &remaining, "SELECT COUNT(*) FROM products WHERE id = $1", deletedID)
 	require.NoError(t, err)
 	assert.Equal(t, 0, remaining)
 
@@ -171,13 +172,17 @@ CREATE TABLE archived_products (
 	sql, args, err = insertMapped.ToSql()
 	require.NoError(t, err)
 
-	var mappedID int64
-	var mappedName string
-	var mappedStock int
-	err = pool.QueryRow(ctx, sql, args...).Scan(&mappedID, &mappedName, &mappedStock)
+	type mappedProduct struct {
+		ID    int64  `db:"id"`
+		Name  string `db:"name"`
+		Stock int    `db:"stock"`
+	}
+
+	var mapped mappedProduct
+	err = pgxscan.Get(ctx, pool, &mapped, sql, args...)
 	require.NoError(t, err)
 
-	assert.NotZero(t, mappedID)
-	assert.Equal(t, "Refill", mappedName)
-	assert.Equal(t, 7, mappedStock)
+	assert.NotZero(t, mapped.ID)
+	assert.Equal(t, "Refill", mapped.Name)
+	assert.Equal(t, 7, mapped.Stock)
 }

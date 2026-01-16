@@ -5,6 +5,7 @@ package itests
 import (
 	"testing"
 
+	"github.com/georgysavva/scany/v2/pgxscan"
 	sq "github.com/n-r-w/squirrel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -93,56 +94,47 @@ INSERT INTO orders (user_id, amount, state) VALUES
 	sql, args, err := query.ToSql()
 	require.NoError(t, err)
 
-	rows, err := pool.Query(ctx, sql, args...)
-	require.NoError(t, err)
-	t.Cleanup(rows.Close)
-
 	type selectResult struct {
-		id          int64
-		name        string
-		totalAmount float64
-		paidCount   int64
-		statusLabel string
-		hasRefunds  bool
-		ordersCount int64
+		ID          int64   `db:"id"`
+		Name        string  `db:"name"`
+		TotalAmount float64 `db:"total_amount"`
+		PaidCount   int64   `db:"paid_count"`
+		StatusLabel string  `db:"status_label"`
+		HasRefunds  bool    `db:"has_refunds"`
+		OrdersCount int64   `db:"orders_count"`
 	}
 
-	results := make([]selectResult, 0)
-	for rows.Next() {
-		var row selectResult
-		err := rows.Scan(&row.id, &row.name, &row.totalAmount, &row.paidCount, &row.statusLabel, &row.hasRefunds, &row.ordersCount)
-		require.NoError(t, err)
-		results = append(results, row)
-	}
-	require.NoError(t, rows.Err())
+	var results []selectResult
+	err = pgxscan.Select(ctx, pool, &results, sql, args...)
+	require.NoError(t, err)
 
 	expected := []selectResult{
 		{
-			id:          3,
-			name:        "Cara",
-			totalAmount: 250,
-			paidCount:   2,
-			statusLabel: "active",
-			hasRefunds:  false,
-			ordersCount: 2,
+			ID:          3,
+			Name:        "Cara",
+			TotalAmount: 250,
+			PaidCount:   2,
+			StatusLabel: "active",
+			HasRefunds:  false,
+			OrdersCount: 2,
 		},
 		{
-			id:          1,
-			name:        "Alice",
-			totalAmount: 120.5,
-			paidCount:   1,
-			statusLabel: "active",
-			hasRefunds:  true,
-			ordersCount: 2,
+			ID:          1,
+			Name:        "Alice",
+			TotalAmount: 120.5,
+			PaidCount:   1,
+			StatusLabel: "active",
+			HasRefunds:  true,
+			OrdersCount: 2,
 		},
 		{
-			id:          2,
-			name:        "Bob",
-			totalAmount: 0,
-			paidCount:   0,
-			statusLabel: "inactive",
-			hasRefunds:  true,
-			ordersCount: 1,
+			ID:          2,
+			Name:        "Bob",
+			TotalAmount: 0,
+			PaidCount:   0,
+			StatusLabel: "inactive",
+			HasRefunds:  true,
+			OrdersCount: 1,
 		},
 	}
 
@@ -362,58 +354,40 @@ INSERT INTO user_groups_all (user_id, group_id) VALUES
 	sql, args, err := query.ToSql()
 	require.NoError(t, err)
 
-	rows, err := pool.Query(ctx, sql, args...)
-	require.NoError(t, err)
-	t.Cleanup(rows.Close)
-
 	type selectResult struct {
-		prefID        int64
-		prefName      string
-		displayName   string
-		emailLabel    string
-		statusRank    int
-		hasRefunds    bool
-		noChargebacks bool
-		sumAmount     float64
-		ordersCount   int64
-		minAmount     float64
-		maxAmount     float64
-		avgAmount     float64
+		PrefID        int64   `db:"pref_id"`
+		PrefName      string  `db:"pref_name"`
+		DisplayName   string  `db:"display_name"`
+		EmailLabel    string  `db:"email_label"`
+		StatusRank    int     `db:"status_rank"`
+		HasRefunds    bool    `db:"has_refunds"`
+		NoChargebacks bool    `db:"no_chargebacks"`
+		SumAmount     float64 `db:"sum_amount"`
+		OrdersCount   int64   `db:"orders_count"`
+		MinAmount     float64 `db:"min_amount"`
+		MaxAmount     float64 `db:"max_amount"`
+		AvgAmount     float64 `db:"avg_amount"`
 	}
 
-	require.True(t, rows.Next())
-
-	var got selectResult
-	err = rows.Scan(
-		&got.prefID,
-		&got.prefName,
-		&got.displayName,
-		&got.emailLabel,
-		&got.statusRank,
-		&got.hasRefunds,
-		&got.noChargebacks,
-		&got.sumAmount,
-		&got.ordersCount,
-		&got.minAmount,
-		&got.maxAmount,
-		&got.avgAmount,
-	)
+	var results []selectResult
+	err = pgxscan.Select(ctx, pool, &results, sql, args...)
 	require.NoError(t, err)
-	require.False(t, rows.Next())
-	require.NoError(t, rows.Err())
+	require.Len(t, results, 1)
 
-	assert.Equal(t, int64(1), got.prefID)
-	assert.Equal(t, "Alice", got.prefName)
-	assert.Equal(t, "Alice <alice@example.com>", got.displayName)
-	assert.Equal(t, "alice@work.com", got.emailLabel)
-	assert.Equal(t, 1, got.statusRank)
-	assert.True(t, got.hasRefunds)
-	assert.True(t, got.noChargebacks)
-	assert.InEpsilon(t, 120.0, got.sumAmount, 0.0001)
-	assert.Equal(t, int64(2), got.ordersCount)
-	assert.InEpsilon(t, 20.0, got.minAmount, 0.0001)
-	assert.InEpsilon(t, 100.0, got.maxAmount, 0.0001)
-	assert.InEpsilon(t, 60.0, got.avgAmount, 0.0001)
+	got := results[0]
+
+	assert.Equal(t, int64(1), got.PrefID)
+	assert.Equal(t, "Alice", got.PrefName)
+	assert.Equal(t, "Alice <alice@example.com>", got.DisplayName)
+	assert.Equal(t, "alice@work.com", got.EmailLabel)
+	assert.Equal(t, 1, got.StatusRank)
+	assert.True(t, got.HasRefunds)
+	assert.True(t, got.NoChargebacks)
+	assert.InEpsilon(t, 120.0, got.SumAmount, 0.0001)
+	assert.Equal(t, int64(2), got.OrdersCount)
+	assert.InEpsilon(t, 20.0, got.MinAmount, 0.0001)
+	assert.InEpsilon(t, 100.0, got.MaxAmount, 0.0001)
+	assert.InEpsilon(t, 60.0, got.AvgAmount, 0.0001)
 
 	builderResetQuery := sq.Select("id").
 		Distinct().

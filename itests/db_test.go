@@ -6,6 +6,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/jackc/pgx/v5/pgxpool"
 	sq "github.com/n-r-w/squirrel"
 	"github.com/n-r-w/testdock/v2"
@@ -34,18 +35,9 @@ func queryInt64s(t *testing.T, pool *pgxpool.Pool, ctx context.Context, q sq.Sql
 	sql, args, err := q.ToSql()
 	require.NoError(t, err)
 
-	rows, err := pool.Query(ctx, sql, args...)
-	require.NoError(t, err)
-	t.Cleanup(rows.Close)
-
 	var ids []int64
-	for rows.Next() {
-		var id int64
-		err := rows.Scan(&id)
-		require.NoError(t, err)
-		ids = append(ids, id)
-	}
-	require.NoError(t, rows.Err())
+	err = pgxscan.Select(ctx, pool, &ids, sql, args...)
+	require.NoError(t, err)
 
 	return ids
 }
@@ -56,22 +48,21 @@ func queryInt64StringPairs(t *testing.T, pool *pgxpool.Pool, ctx context.Context
 	sql, args, err := q.ToSql()
 	require.NoError(t, err)
 
-	rows, err := pool.Query(ctx, sql, args...)
-	require.NoError(t, err)
-	t.Cleanup(rows.Close)
-
-	var ids []int64
-	var names []string
-	for rows.Next() {
-		var id int64
-		var name string
-		err := rows.Scan(&id, &name)
-		require.NoError(t, err)
-
-		ids = append(ids, id)
-		names = append(names, name)
+	type idName struct {
+		ID   int64  `db:"id"`
+		Name string `db:"name"`
 	}
-	require.NoError(t, rows.Err())
+
+	var rows []idName
+	err = pgxscan.Select(ctx, pool, &rows, sql, args...)
+	require.NoError(t, err)
+
+	ids := make([]int64, 0, len(rows))
+	names := make([]string, 0, len(rows))
+	for _, row := range rows {
+		ids = append(ids, row.ID)
+		names = append(names, row.Name)
+	}
 
 	return ids, names
 }
