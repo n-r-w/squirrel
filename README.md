@@ -188,7 +188,7 @@ sq.Range("id", nil, 10) // id <= 10
 ### EqNotEmpty function: ignores empty and zero values in Eq map. Useful for filtering
 
 ```go
-EqNotEmpty{"id1": 1, "name": nil, id2: 0, "desc": ""} // id1 = 1
+EqNotEmpty{"id1": 1, "name": nil, "id2": 0, "desc": ""} // id1 = 1
 ```
 
 ### OrderByCond function: can be used to avoid hardcoding column names in the code
