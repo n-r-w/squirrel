@@ -5,27 +5,46 @@ name: Go
 
 on:
   push:
-    branches: ["master"]
+    branches: ["main"]
   pull_request:
-    branches: ["master"]
+    branches: ["main"]
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+
+    services:
+      postgres_srv:
+        image: postgres:18.1
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: secret
+          POSTGRES_DB: postgres
+
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres" 
+          --health-interval 10s 
+          --health-timeout 5s 
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v6
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.18"
+          go-version: "1.23.8"
 
       - name: Build
         run: go build -v ./...
 
       - name: Test
-        run: go test -v ./...
+        env:
+          TESTDOCK_DSN_POSTGRES: postgres://postgres:secret@localhost:5432/postgres?sslmode=disable
+        run: go test -race -tags -v ./...
 
       - name: Update coverage report
         uses: ncruces/go-coverage-report@v0
@@ -33,4 +52,8 @@ jobs:
           report: true
           chart: true
           amend: true
+        continue-on-error: true
+
+      - name: Update goreportcard
+        uses: creekorful/goreportcard-action@v1
         continue-on-error: true
