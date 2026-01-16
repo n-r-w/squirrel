@@ -50,6 +50,7 @@ CREATE TABLE archived_products (
 
 	rows, err := pool.Query(ctx, sql, args...)
 	require.NoError(t, err)
+	t.Cleanup(rows.Close)
 
 	productIDs := make(map[string]int64)
 	for rows.Next() {
@@ -61,7 +62,6 @@ CREATE TABLE archived_products (
 		productIDs[name] = id
 	}
 	require.NoError(t, rows.Err())
-	rows.Close()
 	require.Len(t, productIDs, 3)
 
 	insertSales := sq.Insert("sales").
@@ -94,6 +94,7 @@ CREATE TABLE archived_products (
 
 	rows, err = pool.Query(ctx, sql, args...)
 	require.NoError(t, err)
+	t.Cleanup(rows.Close)
 
 	updated := make(map[int64]int)
 	for rows.Next() {
@@ -104,7 +105,6 @@ CREATE TABLE archived_products (
 		updated[id] = stock
 	}
 	require.NoError(t, rows.Err())
-	rows.Close()
 	assert.Len(t, updated, 2)
 
 	assert.Equal(t, 4, updated[productIDs["Widget"]])
