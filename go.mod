@@ -1,10 +1,10 @@
 module github.com/n-r-w/squirrel
 
-go 1.23.8
+go 1.24.0
 
 require (
 	github.com/georgysavva/scany/v2 v2.1.4
-	github.com/jackc/pgx/v5 v5.7.6
+	github.com/jackc/pgx/v5 v5.8.0
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0
 	github.com/n-r-w/testdock/v2 v2.3.1
 	github.com/stretchr/testify v1.11.1
@@ -62,9 +62,9 @@ require (
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.40.0 // indirect
-	golang.org/x/sync v0.16.0 // indirect
+	golang.org/x/sync v0.17.0 // indirect
 	golang.org/x/sys v0.34.0 // indirect
-	golang.org/x/text v0.27.0 // indirect
+	golang.org/x/text v0.29.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
