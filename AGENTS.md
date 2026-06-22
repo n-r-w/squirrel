@@ -2,7 +2,7 @@
 
 ## Tech Stack
 
-- go 1.23.8
+- go 1.26.0
 - github.com/georgysavva/scany/v2 for scanning database rows into structs
 - github.com/stretchr/testify for testing
 - golangci-lint-v2 for linting (`golangci-lint run --config .golangci.yml ./... `)

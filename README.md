@@ -93,7 +93,7 @@ SELECT * FROM nodes WHERE meta->'format' ?| array[$1,$2]
 
 ### Go version requirement
 
-Requires Go 1.23.8 or newer.
+Requires Go 1.26.0 or newer.
 
 ### Removed all database interaction methods. Only query building functions are left
 
@@ -207,7 +207,7 @@ The search condition is a WHERE clause with LIKE expressions. All columns will b
 
 ```go
 Select("id", "name").From("users").Search("John", "name", "email")
-// SELECT id, name FROM users WHERE (name::text LIKE ? OR email::text LIKE ?)  
+// SELECT id, name FROM users WHERE (name::text LIKE ? OR email::text LIKE ?)
 // args = ["%John%", "%John%"]
 ```
 
@@ -261,6 +261,9 @@ Alias("u", "pref").OrderBy("id").
 
 ### CTE support (taken from <https://github.com/joshring/squirrel>)
 
+`As` accepts any `Sqlizer`, including `SelectBuilder`, `InsertBuilder`, `UpdateBuilder`, and `DeleteBuilder`.
+Use this for PostgreSQL DML CTE bodies such as `UPDATE ... RETURNING` without raw `Expr`.
+
 ```go
 With("alias").As(
   Select("col1").From("table"),
@@ -275,6 +278,31 @@ WithRecursive("alias").As(
   Select("col2").From("alias"),
 )
 // WITH RECURSIVE alias AS (SELECT col1 FROM table) SELECT col2 FROM alias
+
+candidate := Select("id").
+  From("delivery_messages").
+  Where("state = ?", "ready").
+  OrderBy("id").
+  Limit(1).
+  Suffix("FOR UPDATE SKIP LOCKED")
+
+picked := Select("id").From("candidate")
+
+updated := Update("delivery_messages dm").
+  Set("state", "claimed").
+  From("picked p").
+  Where("dm.id = p.id").
+  Suffix("RETURNING dm.id, dm.state")
+
+With("candidate").As(candidate).
+  Cte("picked").As(picked).
+  Cte("updated").As(updated).
+  Select(
+    Select("id", "state").
+      From("updated").
+      OrderBy("id"),
+  )
+// WITH candidate AS (SELECT id FROM delivery_messages WHERE state = ? ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED), picked AS (SELECT id FROM candidate), updated AS (UPDATE delivery_messages dm SET state = ? FROM picked p WHERE dm.id = p.id RETURNING dm.id, dm.state) SELECT id, state FROM updated ORDER BY id
 ```
 
 ## Miscellaneous
