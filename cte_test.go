@@ -213,6 +213,47 @@ func TestCTEFinalUpdate_DollarPlaceholderNumberingConflict(t *testing.T) {
 	assert.Equal(t, []any{1, 2, 3}, args)
 }
 
+func TestCTEIntermediateUpdateReturning_DollarPlaceholderFormat(t *testing.T) {
+	t.Parallel()
+	b := StatementBuilder.PlaceholderFormat(Dollar)
+
+	candidate := b.Select("id").
+		From("delivery_messages").
+		Where("state = ?", "ready").
+		OrderBy("id").
+		Limit(1).
+		Suffix("FOR UPDATE SKIP LOCKED")
+	picked := b.Select("id").From("candidate")
+	updated := b.Update("delivery_messages dm").
+		Set("state", "claimed").
+		From("picked p").
+		Where("dm.id = p.id").
+		Suffix("RETURNING dm.id, dm.state")
+
+	q := b.With("candidate").
+		As(candidate).
+		Cte("picked").
+		As(picked).
+		Cte("updated").
+		As(updated).
+		Select(
+			b.Select("id", "state").
+				From("updated").
+				OrderBy("id"),
+		)
+
+	sql, args, err := q.ToSql()
+	require.NoError(t, err)
+
+	expectedSQL := "" +
+		"WITH candidate AS (SELECT id FROM delivery_messages WHERE state = $1 ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED), " +
+		"picked AS (SELECT id FROM candidate), " +
+		"updated AS (UPDATE delivery_messages dm SET state = $2 FROM picked p WHERE dm.id = p.id RETURNING dm.id, dm.state) " +
+		"SELECT id, state FROM updated ORDER BY id"
+	assert.Equal(t, expectedSQL, sql)
+	assert.Equal(t, []any{"ready", "claimed"}, args)
+}
+
 func TestWithAsQuery_Replace(t *testing.T) {
 	t.Parallel()
 	w := With("lab").As(

@@ -29,7 +29,7 @@ metadata:
                 * PaginateByID: Adds a LIMIT and start from ID condition to the query. WARNING: The columnID must be included in the ORDER BY clause to avoid unexpected results
                 * PaginateByPage: Adds a LIMIT and OFFSET to the query. WARNING: The columnID must be included in the ORDER BY clause to avoid unexpected results
                 * Alias for Select statement: allows to use table alias in the query for multiple columns and add prefix to the column names if needed
-                * CTE support
+                * CTE support. `As` accepts any `Sqlizer`, including `SelectBuilder`, `InsertBuilder`, `UpdateBuilder`, and `DeleteBuilder`. Use this for PostgreSQL DML CTE bodies such as `UPDATE ... RETURNING` without raw `Expr`.
     </instructions>
     <examples>
         <example name="complex-select-with-cte">
@@ -286,6 +286,37 @@ metadata:
                 PlaceholderFormat(sq.Dollar)
 
             sql, args, err = updateQuery.ToSql()
+            ```
+        </example>
+        <example name="update-returning-as-intermediate-cte">
+            ```go
+            candidate := sq.Select("id").
+                From("delivery_messages").
+                Where("state = ?", "ready").
+                OrderBy("id").
+                Limit(1).
+                Suffix("FOR UPDATE SKIP LOCKED")
+
+            picked := sq.Select("id").
+                From("candidate")
+
+            updated := sq.Update("delivery_messages dm").
+                Set("state", "claimed").
+                From("picked p").
+                Where("dm.id = p.id").
+                Suffix("RETURNING dm.id, dm.state")
+
+            query := sq.With("candidate").As(candidate).
+                Cte("picked").As(picked).
+                Cte("updated").As(updated).
+                Select(
+                    sq.Select("id", "state").
+                        From("updated").
+                        OrderBy("id"),
+                ).
+                PlaceholderFormat(sq.Dollar)
+
+            sql, args, err := query.ToSql()
             ```
         </example>
         <example>
