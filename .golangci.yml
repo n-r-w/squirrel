@@ -1,29 +1,21 @@
+version: "2"
 run:
-  timeout: 5m
   issues-exit-code: 1
   tests: true
-
-version: 2
-
 output:
-  format: colored-line-number
-  print-issued-lines: true
-  print-linter-name: true
-
+  formats:
+    text:
+      path: stdout
+      print-linter-name: true
+      print-issued-lines: true
 linters:
-  disable-all: true
+  default: none
   enable:
-    - godot
-    - copyloopvar
-    - gocyclo
-    - misspell
-    - rowserrcheck
-    - staticcheck
     - asasalint
     - asciicheck
     - bidichk
     - bodyclose
-    # - cyclop
+    - cyclop
     - dupl
     - durationcheck
     - errcheck
@@ -33,18 +25,20 @@ linters:
     - exhaustruct
     - forbidigo
     - gocheckcompilerdirectives
-    - gochecknoglobals
+    # - gochecknoglobals
     - gochecknoinits
     - gochecksumtype
     - gocognit
-    - goconst
+    # - goconst
     - gocritic
+    - godot
     - gomoddirectives
-    - gomodguard
+    - gomodguard_v2
     - goprintffuncname
     - gosec
     - govet
     - ineffassign
+    - intrange
     - lll
     - loggercheck
     - makezero
@@ -67,6 +61,7 @@ linters:
     - revive
     - sloglint
     - sqlclosecheck
+    - staticcheck
     - testableexamples
     - testifylint
     - tparallel
@@ -74,75 +69,188 @@ linters:
     - unparam
     - unused
     - usestdlibvars
+    - usetesting
     - wastedassign
     - whitespace
-    - paralleltest
   settings:
-    revive:
-      rules:
-        - name: var-naming
-          disabled: true
-    govet:
-      check-shadowing: true
-    gocyclo:
-      min-complexity: 15
+    unused:
+      # Mark all struct fields that have been written to as used.
+      # Default: true
+      field-writes-are-uses: true
+      # Treat IncDec statement (e.g. `i++` or `i--`) as both read and write operation instead of just write.
+      # Default: false
+      post-statements-are-reads: true
+      # Mark all exported fields as used.
+      # default: true
+      exported-fields-are-used: true
+      # Mark all function parameters as used.
+      # default: true
+      parameters-are-used: true
+      # Mark all local variables as used.
+      # default: true
+      local-variables-are-used: true
+      # Mark all identifiers inside generated files as used.
+      # Default: true
+      generated-is-used: true
+    cyclop:
+      max-complexity: 30
+      package-average: 10
     dupl:
       threshold: 100
+    errcheck:
+      check-type-assertions: true
+    exhaustive:
+      check:
+        - switch
+        - map
+    exhaustruct:
+      include: []
+      exclude: []
+      allow-empty: true
+      allow-empty-returns: true
+      allow-empty-declarations: true
+    gocognit:
+      min-complexity: 30
     goconst:
       min-len: 2
       min-occurrences: 2
-    misspell:
-      locale: US
-    lll:
-      line-length: 120
-    goimports:
-      local-prefixes: github.com/n-r-w/squirrel
-    nolintlint:
-      require-explanation: true
-      require-specific: true
     gocritic:
-      enabled-tags:
-        - diagnostic
-        - experimental
-        - opinionated
-        - performance
-        - style
       disabled-checks:
         - dupImport
         - ifElseChain
         - octalLiteral
         - whyNoLint
         - wrapperFunc
+        - unlabelStmt
+        - sloppyReassign
+      enabled-tags:
+        - diagnostic
+        - performance
+        - style
+      settings:
+        hugeParam:
+          sizeThreshold: 512
+        rangeValCopy:
+          sizeThreshold: 512
+        ruleguard: {}
+    gomodguard_v2:
+      blocked:
+        - module: github.com/golang/protobuf
+          recommendations:
+            - google.golang.org/protobuf
+          reason: see https://developers.google.com/protocol-buffers/docs/reference/go/faq#modules
+        - module: github.com/satori/go.uuid
+          recommendations:
+            - github.com/google/uuid
+          reason: satori's package is not maintained
+        - module: github.com/gofrs/uuid
+          recommendations:
+            - github.com/gofrs/uuid/v5
+          reason: gofrs' package was not go module before v5
+    govet:
+      disable:
+        - fieldalignment
+        - composites
+      enable-all: true
+      settings:
+        shadow:
+          strict: true
+    inamedparam:
+      skip-single-param: true
+    mnd:
+      ignored-numbers:
+        - "1"
+        - "24" # hours in a day
+        - "60" # minutes in an hour, seconds in a minute
+        - "100" # percentage
+        - "1024" # bytes in a kilobyte
+      ignored-functions:
+        - args.Error
+        - flag.Arg
+        - flag.Duration.*
+        - flag.Float.*
+        - flag.Int.*
+        - flag.Uint.*
+        - os.Chmod
+        - os.Mkdir.*
+        - os.OpenFile
+        - os.WriteFile
+        - prometheus.ExponentialBuckets.*
+        - prometheus.LinearBuckets
+    nakedret:
+      max-func-lines: 0
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+      allow-no-explanation:
+        - funlen
+        - gocognit
+        - lll
+    perfsprint:
+      strconcat: false
+    revive:
+      enable-all-rules: true
+      rules:
+        - name: package-comments
+          disabled: true
+        - name: line-length-limit
+          disabled: true
+        - name: add-constant
+          disabled: true
+        - name: cognitive-complexity
+          disabled: true
+        - name: cyclomatic
+          disabled: true
+        - name: function-length
+          disabled: true
+        - name: argument-limit
+          disabled: true
+        - name: flag-parameter
+          disabled: true
+        - name: max-public-structs
+          disabled: true
+        - name: var-naming
+          # revive var-naming accepts ONLY two slices (allowlist & blocklist) of initialisms.
+          # We keep default behavior here (no custom initialisms).
+    staticcheck:
+      checks:
+        - all
+        - -ST1000
   exclusions:
     generated: lax
     rules:
       - linters:
-          - perfsprint
           - dupl
+          - errcheck
           - gochecknoglobals
           - gocognit
           - goconst
           - gocritic
+          - godot
           - gosec
           - govet
           - lll
+          - prealloc
+          - protogetter
           - revive
           - staticcheck
           - unparam
           - whitespace
-          - gocyclo
-          - cyclop
+          - nilnil
+          - noctx
         path: _test\.go
+      - linters:
+          - revive
+        text: "(var-naming: )?avoid meaningless package names"
+        source: "^package\\s+"
+    paths:
+      - third_party$
+      - builtin$
+      - "^internal/openapi(/|$)"
 
-  exclude-use-default: false
+issues:
   max-issues-per-linter: 0
   max-same-issues: 0
-  new: false
-
-severity:
-  default-severity: error
-  case-sensitive: false
-
 formatters:
   enable:
     - goimports
