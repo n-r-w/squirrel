@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/georgysavva/scany/v2 v2.1.4
-	github.com/jackc/pgx/v5 v5.10.0
+	github.com/jackc/pgx/v5 v5.11.0
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0
 	github.com/n-r-w/testdock/v2 v2.5.0
 	github.com/stretchr/testify v1.11.1
